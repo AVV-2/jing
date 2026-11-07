@@ -113,6 +113,21 @@
             <div id="login-error">名字或密码不对哦~ 🐻</div>
         </div>
     </div>
+    <div id="app-content">
+        
+        <!-- Toggle Button for Top Board -->
+        <button class="toggle-board-btn" onclick="toggleBoard()">💌 留言板</button>
+
+        <!-- Sliding Top Message Board -->
+        <div class="board-drawer" id="board-drawer">
+            <div class="message-list" id="message-list">
+                <div class="loading-text">正在从云端同步留言...</div>
+            </div>
+            <div class="board-input-area">
+                <input type="text" id="msg-input" placeholder="留下一句悄悄话...">
+                <button id="send-btn" onclick="postMessage()">发送</button>
+            </div>
+        </div>
     <div class="text-box">❤️ From Allen</div>
 
     <canvas id="pinkboard"></canvas>
@@ -271,4 +286,5 @@
             setTimeout(function() { onResize(); render(); }, 10);
         })(document.getElementById('pinkboard'));
     </script>
+    </div>
 </body>
