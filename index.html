@@ -286,5 +286,134 @@
             setTimeout(function() { onResize(); render(); }, 10);
         })(document.getElementById('pinkboard'));
     </script>
+    <script>
+    // ======= 🛠️ GITHUB LIVE DATABASE STORAGE CONFIG =======
+    const GITHUB_CONFIG = {
+        token: "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", // 👈 Paste your ghp_xxx token here
+        owner: "avv-2",               // 👈 Your Github profile username
+        repo: "jing",               // 👈 Your repo name (e.g. love)
+        path: "messages.json"                       // JSON filename for cloud storage
+    };
+    // =====================================================
+
+    let currentCurrentUser = "";
+    let fileSha = "";
+
+    function checkLogin() {
+        const user = document.getElementById('username').value.trim();
+        const pass = document.getElementById('password').value.trim();
+        let isCorrect = false;
+
+        if (user.toLowerCase() === "jing" && pass.toLowerCase() === "allen") { currentCurrentUser = "Jing"; isCorrect = true; }
+        else if (user.toLowerCase() === "allen" && pass.toLowerCase() === "jing") { currentCurrentUser = "Allen"; isCorrect = true; }
+
+        if (isCorrect) {
+            document.getElementById('login-overlay').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('app-content').style.display = 'block';
+                
+                // Note: If you want to dynamically override your original text 
+                // component with customized greetings, uncomment the lines below:
+                // if(document.getElementById('greeting-text')) {
+                //    document.getElementById('greeting-text').innerHTML = currentCurrentUser === "Jing" ? `Jing ❤️ Allen` : `Allen ❤️ Jing`;
+                // }
+                
+                loadMessagesFromGitHub(); 
+            }, 500);
+        } else {
+            document.getElementById('login-error').style.display = 'block';
+        }
+    }
+
+    // Toggle Top Sliding Drawer
+    function toggleBoard() {
+        const drawer = document.getElementById('board-drawer');
+        drawer.classList.toggle('open');
+        if(drawer.classList.contains('open')) {
+            loadMessagesFromGitHub(); // Refresh when pulling down
+        }
+    }
+
+    // GitHub API File Reader
+    async function loadMessagesFromGitHub() {
+        const url = `https://github.com{GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
+        const list = document.getElementById('message-list');
+        
+        try {
+            const response = await fetch(url, { headers: { "Authorization": `token ${GITHUB_CONFIG.token}` } });
+            if (response.status === 404) { renderMessages([]); return; }
+            
+            const data = await response.json();
+            fileSha = data.sha;
+            
+            const content = decodeURIComponent(atob(data.content).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            
+            renderMessages(JSON.parse(content));
+        } catch (error) {
+            list.innerHTML = `<div class="loading-text">同步失败，请检查密钥。</div>`;
+        }
+    }
+
+    function renderMessages(messages) {
+        const list = document.getElementById('message-list');
+        list.innerHTML = '';
+        if(messages.length === 0) {
+            list.innerHTML = `<div class="loading-text">云端空空如也，留下第一句话吧 ☁️</div>`;
+            return;
+        }
+        messages.forEach(msg => {
+            const item = document.createElement('div');
+            item.className = 'msg-item';
+            item.innerHTML = `<div class="msg-header"><span>👤 ${msg.user}</span><span>📅 ${msg.date}</span></div><div>${msg.text}</div>`;
+            list.appendChild(item);
+        });
+        list.scrollTop = list.scrollHeight;
+    }
+
+    // GitHub API File Writer
+    async function postMessage() {
+        const input = document.getElementById('msg-input');
+        const text = input.value.trim();
+        const btn = document.getElementById('send-btn');
+        if (!text) return;
+
+        btn.disabled = true; btn.innerText = "...";
+
+        const url = `https://github.com{GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
+        let messages = [];
+        
+        try {
+            const response = await fetch(url, { headers: { "Authorization": `token ${GITHUB_CONFIG.token}` } });
+            if (response.status !== 404) {
+                const data = await response.json(); fileSha = data.sha;
+                const content = decodeURIComponent(atob(data.content).split('').map(function(c) { return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2); }).join(''));
+                messages = JSON.parse(content);
+            }
+        } catch(e) {}
+
+        const now = new Date();
+        const dateString = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+        messages.push({ user: currentCurrentUser, text: text, date: dateString });
+
+        const newContent = btoa(unescape(encodeURIComponent(JSON.stringify(messages, null, 2))));
+        
+        try {
+            const putResponse = await fetch(url, {
+                method: "PUT",
+                headers: { "Authorization": `token ${GITHUB_CONFIG.token}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ message: `Add message by ${currentCurrentUser}`, content: newContent, sha: fileSha || undefined })
+            });
+
+            if (putResponse.ok) { input.value = ''; loadMessagesFromGitHub(); } 
+            else { alert("发送失败，请重试"); }
+        } catch (error) { alert("网络错误"); } 
+        finally { btn.disabled = false; btn.innerText = "发送"; }
+    }
+
+    document.getElementById('msg-input')?.addEventListener('keypress', function(e) { if (e.key === 'Enter') postMessage(); });
+</script>
     </div>
 </body>
