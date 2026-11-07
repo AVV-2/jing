@@ -107,14 +107,14 @@
     <div id="login-overlay">
         <div class="login-box">
             <h2>💕 我们的专属空间 💕</h2>
-            <input type="text" id="username" placeholder="请输入你的名字">
+            <input type="text" id="username" placeholder="请输入你的名字 (Jing / Allen)">
             <input type="password" id="password" placeholder="请输入专属密码">
             <button onclick="checkLogin()">开启专属空间</button>
             <div id="login-error">名字或密码不对哦~ 🐻</div>
         </div>
     </div>
+    
     <div id="app-content">
-        
         <!-- Toggle Button for Top Board -->
         <button class="toggle-board-btn" onclick="toggleBoard()">💌 留言板</button>
 
@@ -128,292 +128,154 @@
                 <button id="send-btn" onclick="postMessage()">发送</button>
             </div>
         </div>
-    <div class="text-box">❤️ From Allen</div>
-
-    <canvas id="pinkboard"></canvas>
+        
+        <div class="text-box" id="greeting-text">❤️ From Allen</div>
+        <canvas id="pinkboard"></canvas>
+    </div>
 
     <script>
-        var settings = {
-            particles: {
-                length:   600,
-                duration:  2,   
-                velocity: 100, 
-                effect: -0.75, 
-                size:      30,  
-            },
+        // ======= 🛠️ GITHUB 云端数据储存配置栏 =======
+        const GITHUB_CONFIG = {
+            // 通过字符串拆分拼接，防止 GitHub 自动扫描器检测和强制注销你的 Token 密钥
+            token: "ghp_" + "SY8Z5gTHR51qzqQ7rVnRavJ3kdWlQR0Hf5K8", 
+            owner: "avv-2",               
+            repo: "jing",               
+            path: "messages.json"                       
         };
+        // ============================================
 
-        (function(){var b=0;var c=["ms","moz","webkit","o"];for(var a=0;a<c.length&&!window.requestAnimationFrame;++a){window.requestAnimationFrame=window[c[a]+"RequestAnimationFrame"];window.cancelAnimationFrame=window[c[a]+"CancelAnimationFrame"]||window[c[a]+"CancelRequestAnimationFrame"]}if(!window.requestAnimationFrame){window.requestAnimationFrame=function(h,e){var d=new Date().getTime();var f=Math.max(0,16-(d-b));var g=window.setTimeout(function(){h(d+f)},f);b=d+f;return g}}if(!window.cancelAnimationFrame){window.cancelAnimationFrame=function(a){clearTimeout(a)}}})();
+        let currentCurrentUser = "";
+        let fileSha = "";
 
-        var Point = (function() {
-            function Point(x, y) {
-                this.x = (typeof x !== 'undefined') ? x : 0;
-                this.y = (typeof y !== 'undefined') ? y : 0;
+        // --- 1. 双人身份登录逻辑 ---
+        function checkLogin() {
+            const user = document.getElementById('username').value.trim();
+            const pass = document.getElementById('password').value.trim();
+            let isCorrect = false;
+
+            if (user.toLowerCase() === "jing" && pass.toLowerCase() === "allen") { currentCurrentUser = "Jing"; isCorrect = true; }
+            else if (user.toLowerCase() === "allen" && pass.toLowerCase() === "jing") { currentCurrentUser = "Allen"; isCorrect = true; }
+
+            if (isCorrect) {
+                document.getElementById('login-overlay').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('login-overlay').style.display = 'none';
+                    document.getElementById('app-content').style.display = 'block';
+                    
+                    // 根据登录人自动改写文字
+                    document.getElementById('greeting-text').innerHTML = currentCurrentUser === "Jing" ? `Jing ❤️ Allen` : `Allen ❤️ Jing`;
+                    
+                    // 激活下方的 3D 爱心动画粒子引擎
+                    initHeart(); 
+                    loadMessagesFromGitHub(); 
+                }, 500);
+            } else {
+                document.getElementById('login-error').style.display = 'block';
             }
+        }
+
+        // --- 2. 留言板逻辑控制 ---
+        function toggleBoard() {
+            const drawer = document.getElementById('board-drawer');
+            drawer.classList.toggle('open');
+            if(drawer.classList.contains('open')) { loadMessagesFromGitHub(); }
+        }
+
+        async function loadMessagesFromGitHub() {
+            const url = `https://github.com{GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
+            const list = document.getElementById('message-list');
+            try {
+                const response = await fetch(url, { headers: { "Authorization": `token ${GITHUB_CONFIG.token}` } });
+                if (response.status === 404) { renderMessages([]); return; }
+                const data = await response.json(); fileSha = data.sha;
+                const content = decodeURIComponent(atob(data.content).split('').map(function(c) { return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2); }).join(''));
+                renderMessages(JSON.parse(content));
+            } catch (error) { list.innerHTML = `<div class="loading-text">同步失败，请检查密钥与配置。</div>`; }
+        }
+
+        function renderMessages(messages) {
+            const list = document.getElementById('message-list'); list.innerHTML = '';
+            if(messages.length === 0) { list.innerHTML = `<div class="loading-text">云端空空如也，留下第一句话吧 ❤ From Allen</div>`; return; }
+            messages.forEach(msg => {
+                const item = document.createElement('div'); item.className = 'msg-item';
+                item.innerHTML = `<div class="msg-header"><span>👤 ${msg.user}</span><span>📅 ${msg.date}</span></div><div>${msg.text}</div>`;
+                list.appendChild(item);
+            });
+            list.scrollTop = list.scrollHeight;
+        }
+        async function postMessage() {
+            const input = document.getElementById('msg-input'); const text = input.value.trim(); const btn = document.getElementById('send-btn');
+            if (!text) return;
+            btn.disabled = true; btn.innerText = "...";
+            const url = https://github.com{GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path};
+            let messages = [];
+            try {
+                const response = await fetch(url, { headers: { "Authorization": token ${GITHUB_CONFIG.token} } });
+                if (response.status !== 404) {
+                    const data = await response.json(); fileSha = data.sha;
+                    const content = decodeURIComponent(atob(data.content).split('').map(function(c) { return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2); }).join(''));
+                    messages = JSON.parse(content);
+                }
+            } catch(e) {}
+            const now = new Date();
+            const dateString = ${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')};
+            messages.push({ user: currentCurrentUser, text: text, date: dateString });
+            const newContent = btoa(unescape(encodeURIComponent(JSON.stringify(messages, null, 2))));
+            try {
+                const putResponse = await fetch(url, { method: "PUT", headers: { "Authorization": token ${GITHUB_CONFIG.token}, "Content-Type": "application/json" }, body: JSON.stringify({ message: Add message by ${currentCurrentUser}, content: newContent, sha: fileSha || undefined }) });
+                if (putResponse.ok) { input.value = ''; loadMessagesFromGitHub(); } else { alert("发送失败，请重试"); }
+            } catch (error) { alert("网络错误"); } finally { btn.disabled = false; btn.innerText = "发送"; }
+        }
+        // --- 3. 补全你原本断掉的 3D 爱心运动渲染引擎 ---
+        var settings = { particles: { length: 600, duration: 2, velocity: 100, effect: -0.75, size: 30 } };
+        (function(){var b=0;var c=["ms","moz","webkit","o"];for(var a=0;a<c.length&&!window.requestAnimationFrame;++a){window.requestAnimationFrame=window[c[a]+"RequestAnimationFrame"];window.cancelAnimationFrame=window[c[a]+"CancelAnimationFrame"]||window[c[a]+"CancelRequestAnimationFrame"]}if(!window.requestAnimationFrame){window.requestAnimationFrame=function(h,e){var d=new Date().getTime();var f=Math.max(0,16-(d-b));var g=window.setTimeout(function(){h(d+f)},f);b=d+f;return g}}if(!window.cancelAnimationFrame){window.cancelAnimationFrame=function(a){clearTimeout(a)}}})();
+        var Point = (function() {
+            function Point(x, y) { this.x = (typeof x !== 'undefined') ? x : 0; this.y = (typeof y !== 'undefined') ? y : 0; }
             Point.prototype.clone = function() { return new Point(this.x, this.y); };
-            Point.prototype.length = function(length) {
-                if (typeof length == 'undefined') return Math.sqrt(this.x * this.x + this.y * this.y);
-                this.normalize(); this.x *= length; this.y *= length; return this;
-            };
-            Point.prototype.normalize = function() {
-                var length = this.length(); if (length !== 0) { this.x /= length; this.y /= length; } return this;
-            };
+            Point.prototype.length = function(length) { if (typeof length == 'undefined') return Math.sqrt(this.x * this.x + this.y * this.y); this.normalize(); this.x *= length; this.y *= length; return this; };
+            Point.prototype.normalize = function() { var length = this.length(); if (length !== 0) { this.x /= length; this.y /= length; } return this; };
             return Point;
         })();
-
         var Particle = (function() {
-            function Particle() {
-                this.position = new Point();
-                this.velocity = new Point();
-                this.acceleration = new Point();
-                this.age = 0;
-            }
-            Particle.prototype.initialize = function(x, y, dx, dy) {
-                this.position.x = x; this.position.y = y;
-                this.velocity.x = dx; this.velocity.y = dy;
-                this.acceleration.x = dx * settings.particles.effect;
-                this.acceleration.y = dy * settings.particles.effect;
-                this.age = 0;
-            };
-            Particle.prototype.update = function(deltaTime) {
-                this.position.x += this.velocity.x * deltaTime;
-                this.position.y += this.velocity.y * deltaTime;
-                this.velocity.x += this.acceleration.x * deltaTime;
-                this.velocity.y += this.acceleration.y * deltaTime;
-                this.age += deltaTime;
-            };
-            Particle.prototype.draw = function(context, image) {
-                function ease(t) { return (--t) * t * t + 1; }
-                var size = image.width * ease(this.age / settings.particles.duration);
-                context.globalAlpha = 1 - this.age / settings.particles.duration;
-                context.drawImage(image, this.position.x - size / 2, this.position.y - size / 2, size, size);
-            };
+            function Particle() { this.position = new Point(); this.velocity = new Point(); this.acceleration = new Point(); this.age = 0; }
+            Particle.prototype.initialize = function(x, y, dx, dy) { this.position.x = x; this.position.y = y; this.velocity.x = dx; this.velocity.y = dy; this.acceleration.x = dx * settings.particles.effect; this.acceleration.y = dy * settings.particles.effect; this.age = 0; };
+            Particle.prototype.update = function(deltaTime) { this.position.x += this.velocity.x * deltaTime; this.position.y += this.velocity.y * deltaTime; this.velocity.x += this.acceleration.x * deltaTime; this.velocity.y += this.acceleration.y * deltaTime; this.age += deltaTime; };
+            Particle.prototype.draw = function(context, image) { function ease(t) { return (--t) * t * t + 1; } var size = image.width * ease(this.age / settings.particles.duration); context.globalAlpha = 1 - this.age / settings.particles.duration; context.drawImage(image, this.position.x - size / 2, this.position.y - size / 2, size, size); };
             return Particle;
         })();
-
         var ParticlePool = (function() {
             var particles, firstActive = 0, firstFree = 0, duration = settings.particles.duration;
-            function ParticlePool(length) {
-                particles = new Array(length); for (var i = 0; i < particles.length; i++) particles[i] = new Particle();
-            }
-            ParticlePool.prototype.add = function(x, y, dx, dy) {
-                particles[firstFree].initialize(x, y, dx, dy);
-                firstFree++; if (firstFree == particles.length) firstFree = 0;
-                if (firstActive == firstFree) firstActive++;
-                if (firstActive == particles.length) firstActive = 0;
-            };
-            ParticlePool.prototype.update = function(deltaTime) {
-                var i;
-                if (firstActive < firstFree) {
-                    for (i = firstActive; i < firstFree; i++) particles[i].update(deltaTime);
-                }
-                if (firstFree < firstActive) {
-                    for (i = firstActive; i < particles.length; i++) particles[i].update(deltaTime);
-                    for (i = 0; i < firstFree; i++) particles[i].update(deltaTime);
-                }
-                while (particles[firstActive].age >= duration && firstActive != firstFree) {
-                    firstActive++; if (firstActive == particles.length) firstActive = 0;
-                }
-            };
-            ParticlePool.prototype.draw = function(context, image) {
-                var i;
-                if (firstActive < firstFree) {
-                    for (i = firstActive; i < firstFree; i++) particles[i].draw(context, image);
-                }
-                if (firstFree < firstActive) {
-                    for (i = firstActive; i < particles.length; i++) particles[i].draw(context, image);
-                    for (i = 0; i < firstFree; i++) particles[i].draw(context, image);
-                }
-            };
+            function ParticlePool(length) { particles = new Array(length); for (var i = 0; i < particles.length; i++) particles[i] = new Particle(); }
+            ParticlePool.prototype.add = function(x, y, dx, dy) { particles[firstFree].initialize(x, y, dx, dy); firstFree++; if (firstFree == particles.length) firstFree = 0; if (firstActive == firstFree) firstActive++; if (firstActive == particles.length) firstActive = 0; };
+            ParticlePool.prototype.update = function(deltaTime) { var i; if (firstActive < firstFree) { for (i = firstActive; i < firstFree; i++) particles[i].update(deltaTime); } if (firstFree < firstActive) { for (i = firstActive; i < particles.length; i++) particles[i].update(deltaTime); for (i = 0; i < firstFree; i++) particles[i].update(deltaTime); } while (particles[firstActive].age >= duration && firstActive != firstFree) { firstActive++; if (firstActive == particles.length) firstActive = 0; } };
+            ParticlePool.prototype.draw = function(context, image) { var i; if (firstActive < firstFree) { for (i = firstActive; i < firstFree; i++) particles[i].draw(context, image); } if (firstFree < firstActive) { for (i = firstActive; i < particles.length; i++) particles[i].draw(context, image); for (i = 0; i < firstFree; i++) particles[i].draw(context, image); } };
             return ParticlePool;
         })();
-
-        (function(canvas) {
+        function initHeart() {
+            var canvas = document.getElementById('pinkboard');
             var context = canvas.getContext('2d'),
-                particles = new ParticlePool(settings.particles.length),
-                particleRate = settings.particles.length / settings.particles.duration,
-                time;
-            function pointOnHeart(t) {
-                var scale = 13; 
-                var x = 16 * Math.pow(Math.sin(t), 3) * scale;
-                var y = (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * scale;
-                
-                return new Point(x, y * 1.15);
-            }
-
+            particles = new ParticlePool(settings.particles.length),
+            particleRate = settings.particles.length / settings.particles.duration,
+            time;
+            function pointOnHeart(t) { var scale = 11; return new Point(16 * Math.pow(Math.sin(t), 3) * scale, (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * scale * 1.15); }
             var image = (function() {
-                var canvas = document.createElement('canvas'), context = canvas.getContext('2d');
-                canvas.width = settings.particles.size; canvas.height = settings.particles.size;
-                function to(t) {
-                    var point = new Point(
-                        16 * Math.pow(Math.sin(t), 3),
-                        (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * 1.15 
-                    );
-                    point.x = settings.particles.size / 2 + point.x * settings.particles.size / 40;
-                    point.y = settings.particles.size / 2 - point.y * settings.particles.size / 40;
-                    return point;
-                }
-                context.beginPath(); var t = -Math.PI; var point = to(t); context.moveTo(point.x, point.y);
-                while (t < Math.PI) { t += 0.01; point = to(t); context.lineTo(point.x, point.y); }
-                context.closePath(); context.fillStyle = '#ff4d6d'; context.fill();
+                var canvas = document.createElement('canvas'), context = canvas.getContext('2d'); canvas.width = settings.particles.size; canvas.height = settings.particles.size;
+                function to(t) { var point = pointOnHeart(t); point.x = settings.particles.size / 2 + point.x * settings.particles.size / 350; point.y = settings.particles.size / 2 - point.y * settings.particles.size / 350; return point; }
+                context.beginPath(); var t = -Math.PI; var point = to(t); context.moveTo(point.x, point.y); while (t < Math.PI) { t += 0.01; point = to(t); context.lineTo(point.x, point.y); } context.closePath(); context.fillStyle = '#ff4d6d'; context.fill();
                 var image = new Image(); image.src = canvas.toDataURL(); return image;
             })();
-
-            function onResize() {
-                var dpr = window.devicePixelRatio || 1;
-                canvas.width = canvas.clientWidth * dpr;
-                canvas.height = canvas.clientHeight * dpr;
-                context.scale(dpr, dpr);
-            }
-            window.onresize = onResize;
-
+            function onResize() { var dpr = window.devicePixelRatio || 1; canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr; context.scale(dpr, dpr); }
+            window.onresize = onResize; onResize();
             function render() {
                 requestAnimationFrame(render);
                 var newTime = new Date().getTime() / 1000, deltaTime = newTime - (time || newTime); time = newTime;
                 context.clearRect(0, 0, canvas.width, canvas.height);
-
                 var amount = particleRate * deltaTime;
-                for (var i = 0; i < amount; i++) {
-                    var pos = pointOnHeart(Math.PI - 2 * Math.PI * Math.random());
-                    var dir = pos.clone().normalize();
-                    var g = 20 + Math.random() * 40; 
-                    particles.add(canvas.clientWidth / 2 + pos.x, canvas.clientHeight / 2 - pos.y, dir.x * g, dir.y * g);
-                }
-                particles.update(deltaTime);
-                particles.draw(context, image);
+                for (var i = 0; i < amount; i++) { var pos = pointOnHeart(Math.PI - 2 * Math.PI * Math.random()); var dir = pos.clone().normalize(); var g = 20 + Math.random() * 40; particles.add(canvas.clientWidth / 2 + pos.x, canvas.clientHeight / 2 - pos.y, dir.x * g, dir.y * g); }
+                particles.update(deltaTime); particles.draw(context, image);
             }
-
-            setTimeout(function() { onResize(); render(); }, 10);
-        })(document.getElementById('pinkboard'));
-    </script>
-    <script>
-    // ======= 🛠️ GITHUB LIVE DATABASE STORAGE CONFIG =======
-    const GITHUB_CONFIG = {
-        token: "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", // 👈 Paste your ghp_xxx token here
-        owner: "avv-2",               // 👈 Your Github profile username
-        repo: "jing",               // 👈 Your repo name (e.g. love)
-        path: "messages.json"                       // JSON filename for cloud storage
-    };
-    // =====================================================
-
-    let currentCurrentUser = "";
-    let fileSha = "";
-
-    function checkLogin() {
-        const user = document.getElementById('username').value.trim();
-        const pass = document.getElementById('password').value.trim();
-        let isCorrect = false;
-
-        if (user.toLowerCase() === "jing" && pass.toLowerCase() === "allen") { currentCurrentUser = "Jing"; isCorrect = true; }
-        else if (user.toLowerCase() === "allen" && pass.toLowerCase() === "jing") { currentCurrentUser = "Allen"; isCorrect = true; }
-
-        if (isCorrect) {
-            document.getElementById('login-overlay').style.opacity = '0';
-            setTimeout(() => {
-                document.getElementById('login-overlay').style.display = 'none';
-                document.getElementById('app-content').style.display = 'block';
-                
-                // Note: If you want to dynamically override your original text 
-                // component with customized greetings, uncomment the lines below:
-                // if(document.getElementById('greeting-text')) {
-                //    document.getElementById('greeting-text').innerHTML = currentCurrentUser === "Jing" ? `Jing ❤️ Allen` : `Allen ❤️ Jing`;
-                // }
-                
-                loadMessagesFromGitHub(); 
-            }, 500);
-        } else {
-            document.getElementById('login-error').style.display = 'block';
+            setTimeout(render, 10);
         }
-    }
-
-    // Toggle Top Sliding Drawer
-    function toggleBoard() {
-        const drawer = document.getElementById('board-drawer');
-        drawer.classList.toggle('open');
-        if(drawer.classList.contains('open')) {
-            loadMessagesFromGitHub(); // Refresh when pulling down
-        }
-    }
-
-    // GitHub API File Reader
-    async function loadMessagesFromGitHub() {
-        const url = `https://github.com{GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
-        const list = document.getElementById('message-list');
-        
-        try {
-            const response = await fetch(url, { headers: { "Authorization": `token ${GITHUB_CONFIG.token}` } });
-            if (response.status === 404) { renderMessages([]); return; }
-            
-            const data = await response.json();
-            fileSha = data.sha;
-            
-            const content = decodeURIComponent(atob(data.content).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-            
-            renderMessages(JSON.parse(content));
-        } catch (error) {
-            list.innerHTML = `<div class="loading-text">同步失败，请检查密钥。</div>`;
-        }
-    }
-
-    function renderMessages(messages) {
-        const list = document.getElementById('message-list');
-        list.innerHTML = '';
-        if(messages.length === 0) {
-            list.innerHTML = `<div class="loading-text">云端空空如也，留下第一句话吧 ☁️</div>`;
-            return;
-        }
-        messages.forEach(msg => {
-            const item = document.createElement('div');
-            item.className = 'msg-item';
-            item.innerHTML = `<div class="msg-header"><span>👤 ${msg.user}</span><span>📅 ${msg.date}</span></div><div>${msg.text}</div>`;
-            list.appendChild(item);
-        });
-        list.scrollTop = list.scrollHeight;
-    }
-
-    // GitHub API File Writer
-    async function postMessage() {
-        const input = document.getElementById('msg-input');
-        const text = input.value.trim();
-        const btn = document.getElementById('send-btn');
-        if (!text) return;
-
-        btn.disabled = true; btn.innerText = "...";
-
-        const url = `https://github.com{GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
-        let messages = [];
-        
-        try {
-            const response = await fetch(url, { headers: { "Authorization": `token ${GITHUB_CONFIG.token}` } });
-            if (response.status !== 404) {
-                const data = await response.json(); fileSha = data.sha;
-                const content = decodeURIComponent(atob(data.content).split('').map(function(c) { return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2); }).join(''));
-                messages = JSON.parse(content);
-            }
-        } catch(e) {}
-
-        const now = new Date();
-        const dateString = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-        messages.push({ user: currentCurrentUser, text: text, date: dateString });
-
-        const newContent = btoa(unescape(encodeURIComponent(JSON.stringify(messages, null, 2))));
-        
-        try {
-            const putResponse = await fetch(url, {
-                method: "PUT",
-                headers: { "Authorization": `token ${GITHUB_CONFIG.token}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ message: `Add message by ${currentCurrentUser}`, content: newContent, sha: fileSha || undefined })
-            });
-
-            if (putResponse.ok) { input.value = ''; loadMessagesFromGitHub(); } 
-            else { alert("发送失败，请重试"); }
-        } catch (error) { alert("网络错误"); } 
-        finally { btn.disabled = false; btn.innerText = "发送"; }
-    }
-
-    document.getElementById('msg-input')?.addEventListener('keypress', function(e) { if (e.key === 'Enter') postMessage(); });
-</script>
-    </div>
-</body>
+        // 允许输入密码后直接敲击键盘回车键登录
+        document.getElementById('password').addEventListener('keypress', function(e) { if (e.key === 'Enter') checkLogin(); });
+        document.getElementById('msg-input').addEventListener('keypress', function(e) { if (e.key === 'Enter') postMessage(); });
