@@ -177,58 +177,134 @@
             }
         }
 
-        // --- 2. 留言板逻辑控制 ---
+        // --- 2. GitHub 云端留言板 ---
+        const MESSAGE_API_URL = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
+        const githubHeaders = {
+            "Authorization": `Bearer ${GITHUB_CONFIG.token}`,
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28"
+        };
+
         function toggleBoard() {
             const drawer = document.getElementById('board-drawer');
             drawer.classList.toggle('open');
-            if(drawer.classList.contains('open')) { loadMessagesFromGitHub(); }
+            if (drawer.classList.contains('open')) loadMessagesFromGitHub();
+        }
+
+        function decodeGitHubContent(content) {
+            const bytes = Uint8Array.from(atob(content.replace(/\s/g, '')), c => c.charCodeAt(0));
+            return new TextDecoder().decode(bytes);
+        }
+
+        function encodeGitHubContent(content) {
+            const bytes = new TextEncoder().encode(content);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+            return btoa(binary);
+        }
+
+        async function fetchMessages() {
+            const response = await fetch(MESSAGE_API_URL, { headers: githubHeaders, cache: 'no-store' });
+            if (response.status === 404) return { messages: [], sha: null };
+            if (!response.ok) throw new Error(`GitHub API 返回 ${response.status}：${(await response.text()).slice(0, 180)}`);
+            const data = await response.json();
+            const messages = JSON.parse(decodeGitHubContent(data.content));
+            if (!Array.isArray(messages)) throw new Error('messages.json 必须是 JSON 数组');
+            return { messages, sha: data.sha };
         }
 
         async function loadMessagesFromGitHub() {
-            const url = `https://github.com{GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
             const list = document.getElementById('message-list');
+            list.innerHTML = '<div class="loading-text">正在从云端同步留言...</div>';
             try {
-                const response = await fetch(url, { headers: { "Authorization": `token ${GITHUB_CONFIG.token}` } });
-                if (response.status === 404) { renderMessages([]); return; }
-                const data = await response.json(); fileSha = data.sha;
-                const content = decodeURIComponent(atob(data.content).split('').map(function(c) { return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2); }).join(''));
-                renderMessages(JSON.parse(content));
-            } catch (error) { list.innerHTML = `<div class="loading-text">同步失败，请检查密钥与配置。</div>`; }
+                const result = await fetchMessages();
+                fileSha = result.sha || '';
+                renderMessages(result.messages);
+            } catch (error) {
+                console.error('同步留言失败', error);
+                list.textContent = `同步失败：${error.message}`;
+                list.classList.add('loading-text');
+            }
         }
 
         function renderMessages(messages) {
-            const list = document.getElementById('message-list'); list.innerHTML = '';
-            if(messages.length === 0) { list.innerHTML = `<div class="loading-text">云端空空如也，留下第一句话吧 ❤ From Allen</div>`; return; }
+            const list = document.getElementById('message-list');
+            list.classList.remove('loading-text');
+            list.replaceChildren();
+            if (!messages.length) {
+                const empty = document.createElement('div');
+                empty.className = 'loading-text';
+                empty.textContent = '云端空空如也，留下第一句话吧 ❤ From Allen';
+                list.appendChild(empty);
+                return;
+            }
             messages.forEach(msg => {
-                const item = document.createElement('div'); item.className = 'msg-item';
-                item.innerHTML = `<div class="msg-header"><span>👤 ${msg.user}</span><span>📅 ${msg.date}</span></div><div>${msg.text}</div>`;
+                const item = document.createElement('div');
+                item.className = 'msg-item';
+                const header = document.createElement('div');
+                header.className = 'msg-header';
+                const user = document.createElement('span');
+                user.textContent = `👤 ${msg.user || ''}`;
+                const date = document.createElement('span');
+                date.textContent = `📅 ${msg.date || ''}`;
+                header.append(user, date);
+                const body = document.createElement('div');
+                body.textContent = msg.text || '';
+                item.append(header, body);
                 list.appendChild(item);
             });
             list.scrollTop = list.scrollHeight;
         }
+
         async function postMessage() {
-            const input = document.getElementById('msg-input'); const text = input.value.trim(); const btn = document.getElementById('send-btn');
-            if (!text) return;
-            btn.disabled = true; btn.innerText = "...";
-            const url = https://github.com{GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path};
-            let messages = [];
+            const input = document.getElementById('msg-input');
+            const btn = document.getElementById('send-btn');
+            const messageText = input.value.trim();
+            if (!messageText || btn.disabled) return;
+            btn.disabled = true;
+            btn.innerText = '发送中...';
             try {
-                const response = await fetch(url, { headers: { "Authorization": token ${GITHUB_CONFIG.token} } });
-                if (response.status !== 404) {
-                    const data = await response.json(); fileSha = data.sha;
-                    const content = decodeURIComponent(atob(data.content).split('').map(function(c) { return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2); }).join(''));
-                    messages = JSON.parse(content);
+                const now = new Date();
+                const dateString = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                const entry = { user: currentCurrentUser, text: messageText, date: dateString };
+                // 每次发送前读取最新 SHA，避免覆盖对方刚刚写入的留言。
+                // 冲突时重新读取并尝试一次。
+                let saved = false;
+                for (let attempt = 0; attempt < 2 && !saved; attempt++) {
+                    const { messages, sha } = await fetchMessages();
+                    messages.push(entry);
+                    const body = {
+                        message: `Add message by ${currentCurrentUser}`,
+                        content: encodeGitHubContent(JSON.stringify(messages, null, 2))
+                    };
+                    if (sha) body.sha = sha;
+                    const response = await fetch(MESSAGE_API_URL, {
+                        method: 'PUT',
+                        headers: { ...githubHeaders, 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    if (response.ok) {
+                        saved = true;
+                    } else if ((response.status === 409 || response.status === 422) && attempt === 0) {
+                        continue;
+                    } else {
+                        throw new Error(`GitHub API 返回 ${response.status}：${(await response.text()).slice(0, 180)}`);
+                    }
                 }
-            } catch(e) {}
-            const now = new Date();
-            const dateString = ${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')};
-            messages.push({ user: currentCurrentUser, text: text, date: dateString });
-            const newContent = btoa(unescape(encodeURIComponent(JSON.stringify(messages, null, 2))));
-            try {
-                const putResponse = await fetch(url, { method: "PUT", headers: { "Authorization": token ${GITHUB_CONFIG.token}, "Content-Type": "application/json" }, body: JSON.stringify({ message: Add message by ${currentCurrentUser}, content: newContent, sha: fileSha || undefined }) });
-                if (putResponse.ok) { input.value = ''; loadMessagesFromGitHub(); } else { alert("发送失败，请重试"); }
-            } catch (error) { alert("网络错误"); } finally { btn.disabled = false; btn.innerText = "发送"; }
+                input.value = '';
+                await loadMessagesFromGitHub();
+            } catch (error) {
+                console.error('发送留言失败', error);
+                alert(`发送失败：${error.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = '发送';
+            }
         }
+
+        document.getElementById('msg-input').addEventListener('keydown', e => {
+            if (e.key === 'Enter') postMessage();
+        });
         // --- 3. 补全你原本断掉的 3D 爱心运动渲染引擎 ---
         var settings = { particles: { length: 600, duration: 2, velocity: 100, effect: -0.75, size: 30 } };
         (function(){var b=0;var c=["ms","moz","webkit","o"];for(var a=0;a<c.length&&!window.requestAnimationFrame;++a){window.requestAnimationFrame=window[c[a]+"RequestAnimationFrame"];window.cancelAnimationFrame=window[c[a]+"CancelAnimationFrame"]||window[c[a]+"CancelRequestAnimationFrame"]}if(!window.requestAnimationFrame){window.requestAnimationFrame=function(h,e){var d=new Date().getTime();var f=Math.max(0,16-(d-b));var g=window.setTimeout(function(){h(d+f)},f);b=d+f;return g}}if(!window.cancelAnimationFrame){window.cancelAnimationFrame=function(a){clearTimeout(a)}}})();
@@ -298,3 +374,7 @@
 
         // 允许在密码框敲回车键直接登录
         document.getElementById('password').addEventListener('keypress', function(e) { if (e.key === 'Enter') checkLogin(); });
+
+    </script>
+</body>
+</html>
