@@ -65,8 +65,11 @@
         
         /* --- MAIN APP CONTAINER --- */
         #app-content {
-            display: none; /* Hidden until login succeeds */
-            width: 100%; height: 100%; position: relative;
+            display: none; 
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
         }
         
         /* --- SLIDING TOP MESSAGE BOARD --- */
@@ -237,35 +240,51 @@
             return Point;
         })();
         var Particle = (function() {
-            function Particle() { this.position = new Point(); this.velocity = new Point(); this.acceleration = new Point(); this.age = 0; }
+            function Particle() { this.position = new Point(); this.velocity = new Point(); this.velocity = new Point();
+                this.acceleration = new Point();
+                this.age = 0;
+            }
             Particle.prototype.initialize = function(x, y, dx, dy) { this.position.x = x; this.position.y = y; this.velocity.x = dx; this.velocity.y = dy; this.acceleration.x = dx * settings.particles.effect; this.acceleration.y = dy * settings.particles.effect; this.age = 0; };
             Particle.prototype.update = function(deltaTime) { this.position.x += this.velocity.x * deltaTime; this.position.y += this.velocity.y * deltaTime; this.velocity.x += this.acceleration.x * deltaTime; this.velocity.y += this.acceleration.y * deltaTime; this.age += deltaTime; };
             Particle.prototype.draw = function(context, image) { function ease(t) { return (--t) * t * t + 1; } var size = image.width * ease(this.age / settings.particles.duration); context.globalAlpha = 1 - this.age / settings.particles.duration; context.drawImage(image, this.position.x - size / 2, this.position.y - size / 2, size, size); };
             return Particle;
         })();
+
         var ParticlePool = (function() {
             var particles, firstActive = 0, firstFree = 0, duration = settings.particles.duration;
+            // 修正：确保传递正确的 length 参数
             function ParticlePool(length) { particles = new Array(length); for (var i = 0; i < particles.length; i++) particles[i] = new Particle(); }
             ParticlePool.prototype.add = function(x, y, dx, dy) { particles[firstFree].initialize(x, y, dx, dy); firstFree++; if (firstFree == particles.length) firstFree = 0; if (firstActive == firstFree) firstActive++; if (firstActive == particles.length) firstActive = 0; };
             ParticlePool.prototype.update = function(deltaTime) { var i; if (firstActive < firstFree) { for (i = firstActive; i < firstFree; i++) particles[i].update(deltaTime); } if (firstFree < firstActive) { for (i = firstActive; i < particles.length; i++) particles[i].update(deltaTime); for (i = 0; i < firstFree; i++) particles[i].update(deltaTime); } while (particles[firstActive].age >= duration && firstActive != firstFree) { firstActive++; if (firstActive == particles.length) firstActive = 0; } };
             ParticlePool.prototype.draw = function(context, image) { var i; if (firstActive < firstFree) { for (i = firstActive; i < firstFree; i++) particles[i].draw(context, image); } if (firstFree < firstActive) { for (i = firstActive; i < particles.length; i++) particles[i].draw(context, image); for (i = 0; i < firstFree; i++) particles[i].draw(context, image); } };
             return ParticlePool;
         })();
+
+        // 修正：将原有的渲染逻辑包裹进 initHeart() 函数中，供 checkLogin 登录成功后调用
         function initHeart() {
             var canvas = document.getElementById('pinkboard');
             var context = canvas.getContext('2d'),
-            particles = new ParticlePool(settings.particles.length),
-            particleRate = settings.particles.length / settings.particles.duration,
-            time;
+                particles = new ParticlePool(settings.particles.length),
+                particleRate = settings.particles.length / settings.particles.duration,
+                time;
+
             function pointOnHeart(t) { var scale = 11; return new Point(16 * Math.pow(Math.sin(t), 3) * scale, (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * scale * 1.15); }
+
             var image = (function() {
                 var canvas = document.createElement('canvas'), context = canvas.getContext('2d'); canvas.width = settings.particles.size; canvas.height = settings.particles.size;
-                function to(t) { var point = pointOnHeart(t); point.x = settings.particles.size / 2 + point.x * settings.particles.size / 350; point.y = settings.particles.size / 2 - point.y * settings.particles.size / 350; return point; }
+                function to(t) { var point = pointOnHeart(t); point.x = settings.particles.size / 2 + point.x * settings.particles.size / 300; point.y = settings.particles.size / 2 - point.y * settings.particles.size / 300; return point; }
                 context.beginPath(); var t = -Math.PI; var point = to(t); context.moveTo(point.x, point.y); while (t < Math.PI) { t += 0.01; point = to(t); context.lineTo(point.x, point.y); } context.closePath(); context.fillStyle = '#ff4d6d'; context.fill();
                 var image = new Image(); image.src = canvas.toDataURL(); return image;
             })();
-            function onResize() { var dpr = window.devicePixelRatio || 1; canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr; context.scale(dpr, dpr); }
-            window.onresize = onResize; onResize();
+
+            function onResize() { 
+                var dpr = window.devicePixelRatio || 1; 
+                canvas.width = canvas.clientWidth * dpr; 
+                canvas.height = canvas.clientHeight * dpr; 
+                context.scale(dpr, dpr); 
+            }
+            onResize();
+
             function render() {
                 requestAnimationFrame(render);
                 var newTime = new Date().getTime() / 1000, deltaTime = newTime - (time || newTime); time = newTime;
@@ -274,8 +293,8 @@
                 for (var i = 0; i < amount; i++) { var pos = pointOnHeart(Math.PI - 2 * Math.PI * Math.random()); var dir = pos.clone().normalize(); var g = 20 + Math.random() * 40; particles.add(canvas.clientWidth / 2 + pos.x, canvas.clientHeight / 2 - pos.y, dir.x * g, dir.y * g); }
                 particles.update(deltaTime); particles.draw(context, image);
             }
-            setTimeout(render, 10);
+            render();
         }
-        // 允许输入密码后直接敲击键盘回车键登录
+
+        // 允许在密码框敲回车键直接登录
         document.getElementById('password').addEventListener('keypress', function(e) { if (e.key === 'Enter') checkLogin(); });
-        document.getElementById('msg-input').addEventListener('keypress', function(e) { if (e.key === 'Enter') postMessage(); });
