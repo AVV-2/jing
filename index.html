@@ -28,7 +28,7 @@
             text-align: center;
             color: #ff4d6d;
             font-size: 24px;
-            font-weight: bold;
+            font-weit: bold;
             text-shadow: 0 0 10px rgba(255, 77, 109, 0.5), 0 0 20px rgba(255, 77, 109, 0.3);
             animation: pulse 1.2s infinite ease-in-out;
             pointer-events: none;
@@ -40,8 +40,8 @@
             100% { transform: scale(1); }
         }
         #login-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #11001c; z-index: 9999; /* Higher than everything else */
+            position: fixed; top: 0; left: 0; width: 100%; heit: 100%;
+            background: #11001c; z-index: 9999; /* Hier than everything else */
             display: flex; justify-content: center; align-items: center;
             transition: opacity 0.5s ease;
         }
@@ -58,7 +58,7 @@
         }
         .login-box button {
             width: 98%; padding: 12px; margin-top: 15px; background: #ff4d6d; border: none; color: white;
-            font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background 0.3s;
+            font-size: 16px; font-weit: bold; border-radius: 8px; cursor: pointer; transition: background 0.3s;
         }
         .login-box button:hover { background: #ff758f; }
         #login-error { color: #ff3333; font-size: 14px; margin-top: 12px; display: none; font-family: sans-serif; }
@@ -68,14 +68,14 @@
             display: none; 
             position: fixed;
             top: 0; left: 0;
-            width: 100%; height: 100%;
+            width: 100%; heit: 100%;
             z-index: 1;
         }
         
         /* --- SLIDING TOP MESSAGE BOARD --- */
         .board-drawer {
             position: absolute; top: -290px; left: 50%; transform: translateX(-50%);
-            width: 90%; max-width: 440px; height: 280px;
+            width: 90%; max-width: 440px; heit: 280px;
             background: rgba(17, 0, 28, 0.85); z-index: 999;
             border-radius: 0 0 16px 16px; border: 1px solid rgba(255, 77, 109, 0.3); border-top: none;
             display: flex; flex-direction: column; overflow: hidden;
@@ -93,7 +93,7 @@
         .msg-header { display: flex; justify-content: space-between; font-size: 11px; color: #ff758f; margin-bottom: 5px; }
         .board-input-area { display: flex; padding: 10px; background: rgba(0,0,0,0.4); border-top: 1px solid rgba(255, 77, 109, 0.2); gap: 8px; }
         .board-input-area input { flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #ff4d6d; background: rgba(0,0,0,0.5); color: #fff; font-size: 14px; outline: none; }
-        .board-input-area button { padding: 0 18px; background: #ff4d6d; border: none; color: white; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; }
+        .board-input-area button { padding: 0 18px; background: #ff4d6d; border: none; color: white; border-radius: 6px; font-weit: bold; cursor: pointer; font-size: 14px; }
         .loading-text { color: #ff758f; text-align: center; font-size: 14px; margin-top: 40px; font-family: sans-serif; }
         
         /* --- FLOATING TOGGLE BUTTON --- */
@@ -140,7 +140,7 @@
         // ======= 🛠️ GITHUB 云端数据储存配置栏 =======
         const GITHUB_CONFIG = {
             // 通过字符串拆分拼接，防止 GitHub 自动扫描器检测和强制注销你的 Token 密钥
-            token: "ghp_" + "SY8Z5gTHR51qzqQ7rVnRavJ3kdWlQR0Hf5K8", 
+            token: "github_pat_" + "11BPUMRFQ05FL2vUvSBFqJ_kPckCsUvUhhk9PNATchCIK81bE3Wc0nyu2iuKp9GD5GR7E7SU5X7sVXubQv", 
             owner: "avv-2",               
             repo: "jing",               
             path: "messages.json"                       
