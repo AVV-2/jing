@@ -493,10 +493,10 @@
     }
     #floating-messages.board-visible { opacity: 0; visibility: hidden; }
     @keyframes messageDrift {
-      0% { opacity: 0; transform: translate3d(12px, 12px, 0); }
+      0% { opacity: 0; transform: translate3d(12px, 0, 0); }
       12% { opacity: .9; }
       80% { opacity: .9; }
-      100% { opacity: 0; transform: translate3d(-26px,-18px,0); }
+      100% { opacity: 0; transform: translate3d(-26px,0,0); }
     }
     @media (prefers-reduced-motion: reduce) {
       #floating-messages .floating-message { animation: none; opacity: .85; }
@@ -517,12 +517,19 @@
 
     let history=[];
     let recentIndex=0;
+    // Reserve the full horizontal animation sweep plus text height for each
+    // visible message. This prevents collisions throughout the drift.
+    const occupied=new Map();
+    function releaseMessage(item){
+      occupied.delete(item);
+      item.remove();
+    }
     const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     function boardIsOpen(){ return drawer.classList.contains('open'); }
     function syncBoardState(){
       const open=boardIsOpen();
       layer.classList.toggle('board-visible',open);
-      if(open)layer.replaceChildren();
+      if(open){layer.replaceChildren();occupied.clear();}
     }
     new MutationObserver(syncBoardState).observe(drawer,{attributes:true,attributeFilter:['class']});
 
@@ -549,7 +556,7 @@
       if(!history.length || boardIsOpen() || app.style.display==='none') return;
       if(layer.childElementCount>=7)return;
       const recent=history.slice(-25);
-      const msg=recent[recent.length-1-(recentIndex++%recent.length)];
+      const msg=recent[recent.length-1-(recentIndex%recent.length)];
       const item=document.createElement('div');
       item.className='floating-message';
       item.textContent=(msg.user ? msg.user+'：' : '')+msg.text;
@@ -559,21 +566,43 @@
       const scale=Math.min(1,width/430,height/530);
       const heartWidth=155*scale;
       const heartHeight=115*scale;
-      const x=width/2+(Math.random()*2-1)*heartWidth;
-      const y=height/2+22+(Math.random()*2-1)*heartHeight;
-
-      // Clamp after the element is measured, especially for narrow iPhones.
       const itemWidth=item.offsetWidth || 120;
       const itemHeight=item.offsetHeight || 20;
-      item.style.left=Math.round(Math.max(8,Math.min(width-itemWidth-15,x-itemWidth/2)))+'px';
-      item.style.top=Math.round(Math.max(40,Math.min(height-itemHeight-32,y)))+'px';
+      const padding=10;
+      const minLeft=34;
+      const maxLeft=Math.max(minLeft,width-itemWidth-22);
+      const minTop=40;
+      const maxTop=Math.max(minTop,height-itemHeight-32);
 
+      // Test the entire drift envelope, not just initial text rectangles.
+      // No suitable space? Skip this cycle instead of stacking messages.
+      let placement=null;
+      for(let attempt=0;attempt<80;attempt++){
+        const x=width/2+(Math.random()*2-1)*heartWidth;
+        const y=height/2+22+(Math.random()*2-1)*heartHeight;
+        const left=Math.round(Math.max(minLeft,Math.min(maxLeft,x-itemWidth/2)));
+        const top=Math.round(Math.max(minTop,Math.min(maxTop,y)));
+        const rect={
+          left:left-26-padding, right:left+itemWidth+12+padding,
+          top:top-padding, bottom:top+itemHeight+padding
+        };
+        const collides=Array.from(occupied.values()).some(other=>
+          rect.left<other.right && rect.right>other.left &&
+          rect.top<other.bottom && rect.bottom>other.top
+        );
+        if(!collides){placement={left,top,rect};break;}
+      }
+      if(!placement){item.remove();return;}
+      item.style.left=placement.left+'px';
+      item.style.top=placement.top+'px';
+      occupied.set(item,placement.rect);
+      recentIndex++;
       if(reduced){
-        while(layer.childElementCount>5)layer.firstElementChild.remove();
+        while(layer.childElementCount>5)releaseMessage(layer.firstElementChild);
       } else {
         const duration=10+Math.random()*4;
         item.style.setProperty('--drift-duration',duration+'s');
-        item.addEventListener('animationend',()=>item.remove(),{once:true});
+        item.addEventListener('animationend',()=>releaseMessage(item),{once:true});
       }
     }
     function whenVisible(){
@@ -584,6 +613,8 @@
       }
     }
     new MutationObserver(whenVisible).observe(app,{attributes:true,attributeFilter:['style']});
+    // Recalculate lanes after orientation/viewport changes.
+    window.addEventListener('resize',()=>{occupied.clear();layer.replaceChildren();},{passive:true});
     syncBoardState();
     setInterval(()=>{
       if(app.style.display==='none')return;
