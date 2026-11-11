@@ -221,11 +221,12 @@
     const particles = [];
     let firstActive = 0, firstFree = 0;
     for(let i=0; i<config.length; i++) {
-      particles.push({x:0,y:0,vx:0,vy:0,ax:0,ay:0,age:config.duration});
+      particles.push({x:0,y:0,vx:0,vy:0,ax:0,ay:0,age:config.duration,insetX:0,insetY:0});
     }
-    function emit(x,y,vx,vy) {
+    function emit(x,y,vx,vy,insetX=0,insetY=0) {
       const p=particles[firstFree];
       p.x=x;p.y=y;p.vx=vx;p.vy=vy;
+      p.insetX=insetX;p.insetY=insetY;
       p.ax=vx*config.effect;p.ay=vy*config.effect;p.age=0;
       firstFree=(firstFree+1)%config.length;
       if(firstFree===firstActive) firstActive=(firstActive+1)%config.length;
@@ -248,15 +249,11 @@
     resize();
     window.addEventListener('resize',resize,{passive:true});
 
-    // Keep the moving particles born 65% inward, but anchor outer dots
-    // to the exact original heart equation and responsive scale.
-    const rim=Array.from({length:520},(_,i)=>({
-      t:2*Math.PI*i/520,
-      phase:Math.random()*Math.PI*2,
-      speed:.6+Math.random()*1.2,
-      radius:.65+Math.random()*.8
-    }));
-    const spawnInset=0.35; // Spawn particles 65% closer to heart center.
+    // Particles start 65% inward, travel outward along their own heart
+    // radius, and reach the ORIGINAL heart outline while retaining the
+    // original outward velocity, acceleration, fade and full-sized shape.
+    // No additional rim/outline is rendered.
+    const spawnInset=0.35;
     const rate=config.length/config.duration;
     let last=performance.now(),fraction=0;
     const breathStart=last;
@@ -283,9 +280,11 @@
           const length=Math.hypot(pos.x,pos.y)||1;
           const vx=pos.x/length*config.velocity*heartScale;
           const vy=-pos.y/length*config.velocity*heartScale;
-          emit(w/2+pos.x*heartScale*spawnInset,
-               h/2-pos.y*heartScale*spawnInset+22,
-               vx,vy);
+          const outlineX=w/2+pos.x*heartScale;
+          const outlineY=h/2-pos.y*heartScale+22;
+          emit(outlineX,outlineY,vx,vy,
+               pos.x*heartScale*(1-spawnInset),
+               -pos.y*heartScale*(1-spawnInset));
         }
       }
       eachActive(p => {
@@ -298,26 +297,17 @@
         if(life>=1)return;
         const eased=1-Math.pow(1-life,3);
         const spriteSize=config.size*heartScale*eased;
+        // Animate the additional inward-to-outline distance over 1.35s.
+        // The existing particle physics then continues past the full outline.
+        const progress=Math.min(1,p.age/1.35);
+        const smooth=progress*progress*(3-2*progress);
+        const x=p.x-p.insetX*(1-smooth);
+        const y=p.y-p.insetY*(1-smooth);
         ctx.globalAlpha=1-life;
-        ctx.drawImage(spriteCanvas,p.x-spriteSize/2,p.y-spriteSize/2,spriteSize,spriteSize);
+        ctx.drawImage(spriteCanvas,x-spriteSize/2,y-spriteSize/2,spriteSize,spriteSize);
       });
       ctx.globalAlpha=1;
 
-      // Gently twinkling outer rim follows the exact heart curve and
-      // shares the same breathing transform as all the inner particles.
-      ctx.shadowColor='#81D8D0';
-      ctx.shadowBlur=6;
-      for(const dot of rim) {
-        const p=pointOnHeart(dot.t);
-        const shimmer=reduced ? .65 : .53+.25*Math.sin(now*.001*dot.speed*2+dot.phase);
-        ctx.fillStyle='rgba(129,216,208,'+shimmer+')';
-        ctx.beginPath();
-        ctx.arc(centerX+p.x*heartScale,
-                centerY-p.y*heartScale,
-                dot.radius*heartScale,0,Math.PI*2);
-        ctx.fill();
-      }
-      ctx.shadowBlur=0;
       ctx.restore();
       while(firstActive!==firstFree &&
             particles[firstActive].age>=config.duration) {
@@ -329,7 +319,7 @@
       // A static filled set of little hearts for reduced-motion settings.
       for(let i=0;i<500;i++) {
         const pos=pointOnHeart(Math.PI-2*Math.PI*Math.random());
-        emit(w/2+pos.x*heartScale*spawnInset,h/2-pos.y*heartScale*spawnInset+22,0,0);
+        emit(w/2+pos.x*heartScale,h/2-pos.y*heartScale+22,0,0);
         particles[(firstFree+config.length-1)%config.length].age=Math.random()*2.6;
       }
     }
