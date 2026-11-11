@@ -1,153 +1,229 @@
-/* Tiffany-blue static heart shape, with independently hopping glitter particles. */
+/*
+ * Tiffany-blue WebGL flowing heart.
+ * Adapted from the glowing-heart shader in xijaja/love-you:
+ * https://github.com/xijaja/love-you/blob/main/src/lib/Love.svelte
+ * Replaces only the heart renderer. GitHub messages and login remain unchanged.
+ */
 (() => {
   'use strict';
-  const COLOR = [129, 216, 208]; // #81D8D0
-  const glow = (a) => 'rgba(' + COLOR.join(',') + ',' + a + ')';
-  let started = false;
 
-  function initBeatingHeart() {
-    if (started) return;
-    started = true;
-    const canvas = document.getElementById('pinkboard');
-    const ctx = canvas && canvas.getContext('2d');
-    if (!ctx) return;
+  const originalInitHeart = window.initHeart;
+  let running = false;
 
-    const motionReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let width = 0, height = 0, size = 1, ratio = 1;
-    const random = (a, b) => a + Math.random() * (b - a);
-
-    // Classical parametric heart, normalized to approximately -1..1.
-    function heartPoint(t) {
-      return {
-        x: 16 * Math.pow(Math.sin(t), 3) / 17,
-        y: -(13 * Math.cos(t) - 5 * Math.cos(2 * t) -
-            2 * Math.cos(3 * t) - Math.cos(4 * t)) / 17
-      };
-    }
-
-    const points = [];
-    // Fill particles: distributed inside the heart, denser near the edge.
-    for (let i = 0; i < 1750; ++i) {
-      const theta = random(-Math.PI, Math.PI);
-      const boundary = heartPoint(theta);
-      const radius = Math.sqrt(Math.random());
-      points.push({
-        x: boundary.x * radius, y: boundary.y * radius,
-        phase: random(0, Math.PI * 2), speed: random(.55, 1.6),
-        r: random(.55, 1.65), strength: random(.38, .9),
-        halo: Math.random() < .08, offset: 0
-      });
-    }
-    // A brighter, more precise silhouette.
-    for (let i = 0; i < 550; ++i) {
-      const theta = random(-Math.PI, Math.PI);
-      const boundary = heartPoint(theta);
-      const thickness = random(.978, 1.025);
-      points.push({
-        x: boundary.x * thickness, y: boundary.y * thickness,
-        phase: random(0, Math.PI * 2), speed: random(.6, 1.5),
-        r: random(.85, 1.8), strength: random(.7, 1),
-        halo: Math.random() < .12, offset: 0
-      });
-    }
-    // A surrounding cloud of drifting Tiffany-blue dust.
-    for (let i = 0; i < 360; ++i) {
-      const theta = random(-Math.PI, Math.PI);
-      const boundary = heartPoint(theta);
-      const outward = random(1.06, 1.48);
-      points.push({
-        x: boundary.x * outward + random(-.04, .04),
-        y: boundary.y * outward + random(-.04, .04),
-        phase: random(0, Math.PI * 2), speed: random(.4, 1.2),
-        r: random(.4, 1.05), strength: random(.12, .46),
-        halo: false, offset: 1
-      });
-    }
-
-    function resize() {
-      width = canvas.clientWidth || innerWidth;
-      height = canvas.clientHeight || innerHeight;
-      ratio = Math.min(devicePixelRatio || 1, 2);
-      canvas.width = Math.round(width * ratio);
-      canvas.height = Math.round(height * ratio);
-      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-      size = Math.min(width * .40, height * .47, 245);
-    }
-    resize();
-    window.addEventListener('resize', resize, { passive: true });
-
-    const start = performance.now();
-    function draw(now) {
-      const elapsed = (now - start) / 1000;
-      ctx.clearRect(0, 0, width, height);
-      const cx = width / 2;
-      const cy = height / 2 + Math.min(22, height * .027);
-
-      // Constant soft background glow, never pulsating.
-      const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 1.23);
-      bloom.addColorStop(0, glow(.045));
-      bloom.addColorStop(.7, glow(.012));
-      bloom.addColorStop(1, glow(0));
-      ctx.fillStyle = bloom;
-      ctx.beginPath();
-      ctx.arc(cx, cy, size * 1.23, 0, Math.PI * 2);
-      ctx.fill();
-
-      for (const p of points) {
-        // Entire heart stays fixed. Each dot has its own unsynchronized motion.
-        // No global beat phase, no canvas scale, no shared growth/brightness.
-        // Strong, independent local hopping; no shared scaling of the heart.
-        // Different speed/phase for every particle produces a lively shimmering heart.
-        const local = elapsed * (2.6 + p.speed * 3.4) + p.phase;
-        const hop = motionReduced ? 0 : Math.max(0, Math.sin(local)) ** 3;
-        const sideways = motionReduced ? 0 : Math.sin(local * .77 + p.phase * .4) * 3.2;
-        const amplitude = p.offset ? 19 : (p.halo ? 15 : 10);
-        const x = cx + p.x * size + sideways;
-        const y = cy + p.y * size - hop * amplitude;
-        const twinkle = motionReduced ? 1 : .45 + .55 * Math.sin(local + .8) ** 2;
-        const alpha = Math.min(1, p.strength * (twinkle + .42 * hop));
-        const dotRadius = p.r * (1 + .72 * hop);
-        ctx.fillStyle = glow(alpha);
-        ctx.beginPath();
-        ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
-        ctx.fill();
-        if (p.halo) {
-          ctx.fillStyle = glow(alpha * .10);
-          ctx.beginPath();
-          ctx.arc(x, y, dotRadius * 4.2, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-      if (!motionReduced) requestAnimationFrame(draw);
-    }
-    requestAnimationFrame(draw);
-  }
-
-  // Override only the animation engine. Login and GitHub messages remain untouched.
-  window.initHeart = initBeatingHeart;
-
-  const css = document.createElement('style');
-  css.textContent = `
-    #greeting-text {
-      color: #c6f8f3 !important;
-      text-shadow: 0 0 14px rgba(129,216,208,.85),
-                   0 0 30px rgba(129,216,208,.35) !important;
-      top: calc(50% + 22px) !important;
-      animation: none !important;
-      transform: translate(-50%, -50%) !important;
+  const vertexShaderSource = `
+    attribute vec2 position;
+    void main() {
+      gl_Position = vec4(position, 0.0, 1.0);
     }
   `;
-  document.head.appendChild(css);
 
-  // Change only the on-screen greeting, including after the login timeout.
+  // Moving Bezier segments follow a parametric heart contour.
+  // Two light trails share the Tiffany-blue palette instead of pink/blue.
+  const fragmentShaderSource = `
+    precision highp float;
+    uniform vec2 resolution;
+    uniform float time;
+    #define POINT_COUNT 8
+
+    vec2 points[POINT_COUNT];
+    const float speed = -0.5;
+    const float segmentStep = 0.25;
+
+    vec2 getHeartPosition(float t) {
+      return vec2(
+        16.0 * pow(sin(t), 3.0),
+        -(13.0 * cos(t) - 5.0 * cos(2.0*t)
+          - 2.0 * cos(3.0*t) - cos(4.0*t))
+      );
+    }
+
+    float sdBezier(vec2 pos, vec2 A, vec2 B, vec2 C) {
+      vec2 a = B - A;
+      vec2 b = A - 2.0 * B + C;
+      vec2 c = a * 2.0;
+      vec2 d = A - pos;
+      float bb = max(dot(b, b), 0.00000001);
+      float kk = 1.0 / bb;
+      float kx = kk * dot(a, b);
+      float ky = kk * (2.0 * dot(a, a) + dot(d, b)) / 3.0;
+      float kz = kk * dot(d, a);
+      float p = ky - kx*kx;
+      float q = kx*(2.0*kx*kx - 3.0*ky) + kz;
+      float h = q*q + 4.0*p*p*p;
+      float res;
+      if (h >= 0.0) {
+        h = sqrt(h);
+        vec2 x = (vec2(h, -h) - q) * 0.5;
+        vec2 uv = sign(x) * pow(abs(x), vec2(1.0/3.0));
+        float t = clamp(uv.x + uv.y - kx, 0.0, 1.0);
+        vec2 v = d + (c + b*t)*t;
+        res = length(v);
+      } else {
+        float z = sqrt(-p);
+        float v = acos(clamp(q/(p*z*2.0), -1.0, 1.0)) / 3.0;
+        float m = cos(v);
+        float n = sin(v) * 1.732050808;
+        vec3 t = clamp(vec3(m+m, -n-m, n-m) * z - kx, 0.0, 1.0);
+        vec2 v = d + (c+b*t.x)*t.x;
+        res = dot(v,v);
+        v = d + (c+b*t.y)*t.y;
+        res = min(res, dot(v,v));
+        v = d + (c+b*t.z)*t.z;
+        res = sqrt(min(res, dot(v,v)));
+      }
+      return res;
+    }
+
+    float getSegment(float t, vec2 pos, float offset, float scale) {
+      for (int i=0; i<POINT_COUNT; i++) {
+        points[i] = getHeartPosition(
+          offset + float(i)*segmentStep + fract(speed*t)*6.2831853
+        );
+      }
+      vec2 c = (points[0] + points[1]) * 0.5;
+      vec2 prev;
+      float dist = 10000.0;
+      for (int i=0; i<POINT_COUNT-1; i++) {
+        prev = c;
+        c = (points[i] + points[i+1])*0.5;
+        dist = min(dist, sdBezier(pos, scale*prev, scale*points[i], scale*c));
+      }
+      return max(dist, 0.00001);
+    }
+
+    void main() {
+      // Preserve aspect ratio and a stationary heart silhouette.
+      vec2 uv = gl_FragCoord.xy / resolution;
+      vec2 pos = vec2(0.5) - uv;
+      pos.y /= (resolution.x / resolution.y);
+      pos.y += 0.02;
+      float scale = 0.000015 * resolution.y;
+
+      float d1 = getSegment(time, pos, 0.0, scale);
+      float d2 = getSegment(time, pos, 3.4, scale);
+
+      // #81D8D0 Tiffany blue + a paler cyan strand and white-hot cores.
+      vec3 tiffany = vec3(0.506, 0.847, 0.816);
+      vec3 pale = vec3(0.67, 0.97, 0.96);
+      float glow1 = pow(0.015 / d1, 0.90);
+      float glow2 = pow(0.015 / d2, 0.90);
+      vec3 col = glow1*tiffany + glow2*pale;
+      col += 7.0 * vec3(1.0) * (smoothstep(0.003, 0.001, d1)
+                              + smoothstep(0.003, 0.001, d2));
+      col = 1.0 - exp(-col);
+
+      // Transparent away from the glow so the original purple backdrop remains.
+      float alpha = clamp(max(max(col.r, col.g), col.b), 0.0, 1.0);
+      gl_FragColor = vec4(col, alpha);
+    }
+  `;
+
+  function compile(gl, type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      const details = gl.getShaderInfoLog(shader);
+      gl.deleteShader(shader);
+      throw new Error('Heart shader failed: ' + details);
+    }
+    return shader;
+  }
+
+  function startWebGLHeart() {
+    if (running) return;
+    const canvas = document.getElementById('pinkboard');
+    if (!canvas) return;
+
+    let gl;
+    try {
+      gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: false });
+    } catch (e) { /* Browser may not support WebGL. */ }
+    if (!gl) {
+      if (typeof originalInitHeart === 'function') originalInitHeart();
+      return;
+    }
+
+    try {
+      const vertex = compile(gl, gl.VERTEX_SHADER, vertexShaderSource);
+      const fragment = compile(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+      const program = gl.createProgram();
+      gl.attachShader(program, vertex);
+      gl.attachShader(program, fragment);
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        throw new Error(gl.getProgramInfoLog(program));
+      }
+      gl.useProgram(program);
+      gl.deleteShader(vertex);
+      gl.deleteShader(fragment);
+
+      const position = gl.getAttribLocation(program, 'position');
+      const resolution = gl.getUniformLocation(program, 'resolution');
+      const time = gl.getUniformLocation(program, 'time');
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        -1, 1, -1, -1, 1, 1, 1, -1
+      ]), gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(position);
+      gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+      let width = 0;
+      let height = 0;
+      function resize() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        width = Math.max(1, Math.round(canvas.clientWidth * dpr));
+        height = Math.max(1, Math.round(canvas.clientHeight * dpr));
+        if (canvas.width !== width || canvas.height !== height) {
+          canvas.width = width;
+          canvas.height = height;
+        }
+        gl.viewport(0, 0, width, height);
+        gl.uniform2f(resolution, width, height);
+      }
+      resize();
+      window.addEventListener('resize', resize, { passive: true });
+
+      const start = performance.now();
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      function draw(now) {
+        gl.uniform1f(time, reducedMotion ? 0 : (now - start) * 0.001);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        if (!reducedMotion) requestAnimationFrame(draw);
+      }
+      running = true;
+      requestAnimationFrame(draw);
+    } catch (e) {
+      console.error('WebGL heart initialization failed:', e);
+    }
+  }
+
+  // Override only the animation, before checkLogin() calls initHeart().
+  window.initHeart = startWebGLHeart;
+
+  const style = document.createElement('style');
+  style.textContent = `
+    #greeting-text {
+      color: #c6f8f3 !important;
+      text-shadow: 0 0 12px rgba(129,216,208,.8),
+                   0 0 25px rgba(129,216,208,.35) !important;
+      top: calc(50% + 22px) !important;
+      transform: translate(-50%, -50%) !important;
+      animation: none !important;
+    }
+  `;
+  document.head.appendChild(style);
+
   const greeting = document.getElementById('greeting-text');
   if (greeting) {
     const update = () => {
-      const t = greeting.textContent.trim();
-      if (t === 'Jing ❤️ Allen' || t === 'Jing ❤ Allen') greeting.textContent = 'J❤️A';
-      if (t === 'Allen ❤️ Jing' || t === 'Allen ❤ Jing') greeting.textContent = 'A❤️J';
+      const value = greeting.textContent.replace(/\s/g, '');
+      if (value === 'Jing❤️Allen' || value === 'Jing❤Allen') greeting.textContent = 'J❤️A';
+      if (value === 'Allen❤️Jing' || value === 'Allen❤Jing') greeting.textContent = 'A❤️J';
     };
-    new MutationObserver(update).observe(greeting, { childList: true, characterData: true, subtree: true });
+    new MutationObserver(update).observe(greeting,
+      { childList: true, characterData: true, subtree: true });
     update();
   }
 })();
