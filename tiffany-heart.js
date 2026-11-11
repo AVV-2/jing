@@ -255,18 +255,19 @@
     // No additional rim/outline is rendered.
     const spawnInset=0.35;
 
-    // Favor the two lower sloping sides, not just the widest horizontal
-    // edges. Keep the original curve and total birth rate unchanged.
-    // Heart coordinates have positive y toward the TOP.
+    // Favor both the upper diagonal shoulders and lower diagonal sides
+    // rather than concentrating births at the widest horizontal edges.
+    // Positive heart-coordinate y points upward. Only sampling weights change.
     function sampleHeartPoint() {
       for (;;) {
         const point=pointOnHeart(Math.PI-2*Math.PI*Math.random());
         const ax=Math.abs(point.x);
         let weight;
-        if(point.y<0 && ax>=35) weight=2.0;       // lower left/right slopes
-        else if(ax>=110) weight=1.15;             // widest horizontal sides
-        else if(ax>=90) weight=1.35;              // upper outer sides
-        else weight=0.5;                          // central top/bottom strands
+        if(point.y<0 && ax>=35) weight=2.0;             // lower diagonal sides
+        else if(point.y>85 && ax>=30) weight=2.0;       // upper diagonal shoulders
+        else if(ax>=110) weight=1.1;                    // widest horizontal sides
+        else if(ax>=75) weight=1.45;                    // side transitions
+        else weight=0.5;                                // central strands
         if(Math.random()*2.0<=weight) return point;
       }
     }
