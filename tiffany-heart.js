@@ -263,11 +263,10 @@
         const point=pointOnHeart(Math.PI-2*Math.PI*Math.random());
         const ax=Math.abs(point.x);
         let weight;
-        if(point.y<0 && ax>=35) weight=2.0;             // lower diagonal sides
-        else if(point.y>85 && ax>=30) weight=2.0;       // upper diagonal shoulders
+        if(point.y<0 && ax>=35 && ax<110) weight=2.0;    // lower diagonal sides
+        else if(point.y>=0 && ax>=35 && ax<110) weight=2.0; // upper diagonal shoulders
         else if(ax>=110) weight=1.1;                    // widest horizontal sides
-        else if(ax>=75) weight=1.45;                    // side transitions
-        else weight=0.5;                                // central strands
+        else weight=0.5;                               // central top/bottom strands
         if(Math.random()*2.0<=weight) return point;
       }
     }
