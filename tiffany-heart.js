@@ -129,8 +129,8 @@
         vec2 pos = centre - uv;
         pos.y /= widthHeightRatio;
         //Shift upwards to centre heart
-        pos.y -= 22.0 / resolution.x;
-        float scale = min(min(resolution.x * 0.37, resolution.y * 0.36), 315.0) / (16.0 * resolution.x);
+        pos.y += 0.02;
+        float scale = 0.000015 * resolution.y;
     
         float t = time;
     
@@ -175,79 +175,7 @@
   }
 
 
-  // Full heart particle layer: the reference WebGL shader alone renders only two trails.
-  function startHeartParticles() {
-    const parent=document.getElementById('app-content');
-    if(!parent || document.getElementById('heart-particles')) return;
-    const layer=document.createElement('canvas');
-    layer.id='heart-particles';
-    layer.style.cssText='position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none';
-    parent.appendChild(layer);
-    const ctx=layer.getContext('2d');
-    if(!ctx)return;
-    let w,h,scale,dpr;
-    function resize(){
-      w=parent.clientWidth;h=parent.clientHeight;
-      dpr=Math.min(devicePixelRatio||1,2);
-      layer.width=Math.round(w*dpr);layer.height=Math.round(h*dpr);
-      ctx.setTransform(dpr,0,0,dpr,0,0);
-      scale=Math.min(w*.37,h*.36,315);
-    }
-    resize();window.addEventListener('resize',resize,{passive:true});
-    function heart(t){return {x:Math.pow(Math.sin(t),3),y:-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))/16};}
-    const rand=(a,b)=>a+Math.random()*(b-a);
-    const particles=Array.from({length:1900},(_,i)=>{
-      const p=heart(rand(0,Math.PI*2)),edge=i<950;
-      const f=edge?rand(.985,1.015):Math.sqrt(Math.random());
-      return {x:p.x*f,y:p.y*f,edge,phase:rand(0,6.28),speed:rand(1.1,3),r:rand(.5,1.65)};
-    });
-    const bursts=[];const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let last=performance.now(),quota=0;
-    function draw(now){
-      const dt=Math.min(.06,(now-last)/1000);last=now;
-      const t=now/1000,cx=w/2,cy=h/2+22;
-      ctx.clearRect(0,0,w,h);
-      ctx.strokeStyle='rgba(129,216,208,.64)';
-      ctx.lineWidth=1.3;ctx.shadowColor='#81D8D0';ctx.shadowBlur=16;
-      ctx.beginPath();
-      for(let j=0;j<=360;j++){
-        const p=heart(j*Math.PI*2/360);
-        if(!j)ctx.moveTo(cx+p.x*scale,cy+p.y*scale);
-        else ctx.lineTo(cx+p.x*scale,cy+p.y*scale);
-      }
-      ctx.closePath();ctx.stroke();ctx.shadowBlur=0;
-      for(const p of particles){
-        const a=t*p.speed*3+p.phase;
-        const bounce=reduce?0:Math.max(0,Math.sin(a))**2;
-        const x=cx+p.x*scale+ (reduce?0:Math.cos(a*.8)*1.4);
-        const y=cy+p.y*scale-bounce*(p.edge?4:9);
-        const opacity=(p.edge?.65:.3)+(reduce?0:.3*Math.sin(a)**2);
-        ctx.fillStyle='rgba(129,216,208,'+Math.min(opacity,1)+')';
-        ctx.beginPath();ctx.arc(x,y,p.r*(1+bounce*.45),0,Math.PI*2);ctx.fill();
-      }
-      if(!reduce){
-        quota+=dt*120;
-        while(quota>=1){
-          quota--;
-          const p=heart(rand(0,Math.PI*2)),theta=Math.atan2(p.y,p.x);
-          bursts.push({x:p.x,y:p.y,vx:Math.cos(theta)*rand(12,28),
-            vy:Math.sin(theta)*rand(12,28),born:t,life:rand(.9,2.1),r:rand(.7,2.1)});
-        }
-      }
-      for(let i=bursts.length-1;i>=0;i--){
-        const p=bursts[i],age=t-p.born;
-        if(age>p.life){bursts.splice(i,1);continue;}
-        const fade=1-age/p.life;
-        ctx.fillStyle='rgba(129,216,208,'+(fade*.85)+')';
-        ctx.beginPath();ctx.arc(cx+p.x*scale+p.vx*age,cy+p.y*scale+p.vy*age,p.r*fade,0,Math.PI*2);ctx.fill();
-      }
-      if(!reduce)requestAnimationFrame(draw);
-    }
-    requestAnimationFrame(draw);
-  }
-
   function startWebGLHeart() {
-    startHeartParticles();
     if (running) return;
     const canvas = document.getElementById('pinkboard');
     if (!canvas) return;
