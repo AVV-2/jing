@@ -266,7 +266,7 @@
         if(point.y<0 && ax>=35 && ax<110) weight=2.0;    // lower diagonal sides
         else if(point.y>=0 && ax>=35 && ax<110) weight=2.0; // upper diagonal shoulders
         else if(ax>=110) weight=1.1;                    // widest horizontal sides
-        else weight=0.5;                               // central top/bottom strands
+        else weight=0.3;                               // further reduce vertical center strands
         if(Math.random()*2.0<=weight) return point;
       }
     }
