@@ -255,14 +255,14 @@
     // No additional rim/outline is rendered.
     const spawnInset=0.35;
 
-    // Relative birth weights: left/right lobes 1.5x, upper/lower
-    // center strands 0.7x. Rejection sampling keeps the overall
+    // Relative birth weights: left/right lobes 1.7x, upper/lower
+    // center strands 0.5x. Rejection sampling keeps the overall
     // particle count and original heart geometry unchanged.
     function sampleHeartPoint() {
       for (;;) {
         const point=pointOnHeart(Math.PI-2*Math.PI*Math.random());
-        const weight=Math.abs(point.x)>=90 ? 1.5 : 0.7;
-        if(Math.random()*1.5<=weight) return point;
+        const weight=Math.abs(point.x)>=90 ? 1.7 : 0.5;
+        if(Math.random()*1.7<=weight) return point;
       }
     }
     const rate=config.length/config.duration;
