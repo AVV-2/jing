@@ -248,7 +248,7 @@
     resize();
     window.addEventListener('resize',resize,{passive:true});
 
-    const spawnInset=0.55; // Spawn particles 45% closer to heart center.
+    const spawnInset=0.35; // Spawn particles 65% closer to heart center.
     const rate=config.length/config.duration;
     let last=performance.now(),fraction=0;
     const breathStart=last;
@@ -393,7 +393,7 @@
       color: #c6f8f3 !important;
       text-shadow: 0 0 12px rgba(129,216,208,.8),
                    0 0 25px rgba(129,216,208,.35) !important;
-      top: calc(50% + 22px) !important;
+      top: calc(50% + 22px - 15pt) !important;
       transform: translate(-50%, -50%) !important;
       animation: none !important;
     }
