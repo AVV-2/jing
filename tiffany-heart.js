@@ -16,7 +16,7 @@
     }
   `;
 
-  // Original Love.svelte shader math, with only uniform wiring and Tiffany colors adapted.
+  // Original Love.svelte shader math and pink/blue glow; particle heart remains Tiffany blue.
   const fragmentShaderSource = `
     precision highp float;
     
@@ -142,7 +142,7 @@
         //White core
         col += 10.0*vec3((1.0 - smoothstep(0.001, 0.003, dist)));
         //Pink glow
-        col += glow * vec3(0.506,0.847,0.816);
+        col += glow * vec3(0.94,0.14,0.4);
     
         //Get second segment
         dist = getSegment(t, pos, 3.4, scale);
@@ -151,7 +151,7 @@
         //White core
         col += 10.0*vec3((1.0 - smoothstep(0.001, 0.003, dist)));
         //Blue glow
-        col += glow * vec3(0.69,0.97,0.94);
+        col += glow * vec3(0.2,0.6,1.0);
     
         //Tone mapping
         col = 1.0 - exp(-col);
