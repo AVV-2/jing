@@ -483,7 +483,7 @@
       position: absolute; left: 0; top: 0;
       display: inline-block; max-width: min(60vw, 260px);
       color: rgba(255, 132, 177, .95);
-      font-size: clamp(12px, 3.3vw, 16px);
+      font-size: clamp(14px, 3.3vw + 2px, 18px);
       font-weight: 500; line-height: 1.35;
       overflow-wrap: anywhere;
       text-shadow: 0 0 8px rgba(255, 105, 160, .68);
