@@ -245,6 +245,7 @@
     resize();
     window.addEventListener('resize',resize,{passive:true});
 
+    const spawnInset=0.90; // Spawn particles 10% closer to heart center.
     const rate=config.length/config.duration;
     let last=performance.now(),fraction=0;
     const breathStart=last;
@@ -254,10 +255,10 @@
       last=now;
       ctx.clearRect(0,0,w,h);
 
-      // Gentle 4-second breathing cycle: original size -> 105% -> original size.
+      // More visible 4-second breathing cycle: original size -> 112% -> original size.
       // Transform just this particle canvas, keeping the greeting and intro unchanged.
       const phase=(now-breathStart)/4000*2*Math.PI;
-      const breath=reduced ? 1 : 1.025-0.025*Math.cos(phase);
+      const breath=reduced ? 1 : 1.06-0.06*Math.cos(phase);
       const centerX=w/2,centerY=h/2+22;
       ctx.save();
       ctx.translate(centerX,centerY);
@@ -271,8 +272,8 @@
           const length=Math.hypot(pos.x,pos.y)||1;
           const vx=pos.x/length*config.velocity*heartScale;
           const vy=-pos.y/length*config.velocity*heartScale;
-          emit(w/2+pos.x*heartScale,
-               h/2-pos.y*heartScale+22,
+          emit(w/2+pos.x*heartScale*spawnInset,
+               h/2-pos.y*heartScale*spawnInset+22,
                vx,vy);
         }
       }
@@ -301,7 +302,7 @@
       // A static filled set of little hearts for reduced-motion settings.
       for(let i=0;i<500;i++) {
         const pos=pointOnHeart(Math.PI-2*Math.PI*Math.random());
-        emit(w/2+pos.x*heartScale,h/2-pos.y*heartScale+22,0,0);
+        emit(w/2+pos.x*heartScale*spawnInset,h/2-pos.y*heartScale*spawnInset+22,0,0);
         particles[(firstFree+config.length-1)%config.length].age=Math.random()*2.6;
       }
     }
