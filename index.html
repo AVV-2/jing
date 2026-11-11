@@ -351,7 +351,7 @@
             var image = (function() {
                 var canvas = document.createElement('canvas'), context = canvas.getContext('2d'); canvas.width = settings.particles.size; canvas.height = settings.particles.size;
                 function to(t) { var point = pointOnHeart(t); point.x = settings.particles.size / 2 + point.x * settings.particles.size / 300; point.y = settings.particles.size / 2 - point.y * settings.particles.size / 300; return point; }
-                context.beginPath(); var t = -Math.PI; var point = to(t); context.moveTo(point.x, point.y); while (t < Math.PI) { t += 0.01; point = to(t); context.lineTo(point.x, point.y); } context.closePath(); context.fillStyle = '#ff4d6d'; context.fill();
+                context.beginPath(); var t = -Math.PI; var point = to(t); context.moveTo(point.x, point.y); while (t < Math.PI) { t += 0.01; point = to(t); context.lineTo(point.x, point.y); } context.closePath(); context.fillStyle = '#81D8D0'; context.fill();
                 var image = new Image(); image.src = canvas.toDataURL(); return image;
             })();
 
