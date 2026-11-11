@@ -255,14 +255,19 @@
     // No additional rim/outline is rendered.
     const spawnInset=0.35;
 
-    // Relative birth weights: left/right lobes 1.7x, upper/lower
-    // center strands 0.5x. Rejection sampling keeps the overall
-    // particle count and original heart geometry unchanged.
+    // Favor the two lower sloping sides, not just the widest horizontal
+    // edges. Keep the original curve and total birth rate unchanged.
+    // Heart coordinates have positive y toward the TOP.
     function sampleHeartPoint() {
       for (;;) {
         const point=pointOnHeart(Math.PI-2*Math.PI*Math.random());
-        const weight=Math.abs(point.x)>=90 ? 1.7 : 0.5;
-        if(Math.random()*1.7<=weight) return point;
+        const ax=Math.abs(point.x);
+        let weight;
+        if(point.y<0 && ax>=35) weight=2.0;       // lower left/right slopes
+        else if(ax>=110) weight=1.15;             // widest horizontal sides
+        else if(ax>=90) weight=1.35;              // upper outer sides
+        else weight=0.5;                          // central top/bottom strands
+        if(Math.random()*2.0<=weight) return point;
       }
     }
     const rate=config.length/config.duration;
