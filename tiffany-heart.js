@@ -454,6 +454,158 @@
   `;
   document.head.appendChild(style);
 
+
+  // Floating messages are an additional presentation of the existing
+  // GitHub-backed history. Leave fetchMessages/postMessage/renderMessages intact.
+  const boardStyle=document.createElement('style');
+  boardStyle.textContent=`
+    .board-drawer {
+      border: 0 !important;
+      background: rgba(15, 9, 29, .84) !important;
+      box-shadow: 0 14px 35px rgba(0,0,0,.30) !important;
+    }
+    .msg-item { border: 0 !important; font-size: 16pt !important; }
+    .msg-header { font-size: 16pt !important; gap: 12px; flex-wrap: wrap; }
+    .message-list, .loading-text { font-size: 16pt !important; }
+    .board-input-area {
+      border-top: 0 !important;
+      align-items: center;
+    }
+    .board-input-area input, #msg-input {
+      min-width: 0; width: 100%; font-size: 16pt !important;
+      line-height: 1.35; -webkit-text-size-adjust: 100%;
+    }
+    .board-input-area button, .toggle-board-btn {
+      font-size: 16pt !important;
+    }
+    .board-input-area button { padding-inline: 12px; flex-shrink: 0; }
+    .toggle-board-btn { padding: 7px 12px; }
+    #greeting-text { z-index: 5 !important; }
+    #floating-messages {
+      position: absolute; inset: 0; z-index: 3;
+      pointer-events: none; overflow: hidden; contain: layout;
+    }
+    #floating-messages .floating-message {
+      position: absolute; left: 0; top: 0;
+      display: inline-block; max-width: min(60vw, 260px);
+      color: rgba(221, 255, 249, .92);
+      font-size: clamp(12px, 3.3vw, 16px);
+      font-weight: 500; line-height: 1.35;
+      overflow-wrap: anywhere;
+      text-shadow: 0 0 7px rgba(129,216,208,.75);
+      opacity: 0;
+      will-change: transform, opacity;
+      animation: messageDrift var(--drift-duration, 11s) linear forwards;
+    }
+    #floating-messages.board-visible { opacity: 0; visibility: hidden; }
+    @keyframes messageDrift {
+      0% { opacity: 0; transform: translate3d(12px, 12px, 0); }
+      12% { opacity: .9; }
+      80% { opacity: .9; }
+      100% { opacity: 0; transform: translate3d(-26px,-18px,0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #floating-messages .floating-message { animation: none; opacity: .85; }
+    }
+  `;
+  document.head.appendChild(boardStyle);
+
+  function setupFloatingMessages(){
+    const app=document.getElementById('app-content');
+    const list=document.getElementById('message-list');
+    const drawer=document.getElementById('board-drawer');
+    if(!app || !list || !drawer || document.getElementById('floating-messages')) return;
+
+    const layer=document.createElement('div');
+    layer.id='floating-messages';
+    layer.setAttribute('aria-hidden','true');
+    app.appendChild(layer);
+
+    let history=[];
+    let recentIndex=0;
+    const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function boardIsOpen(){ return drawer.classList.contains('open'); }
+    function syncBoardState(){
+      const open=boardIsOpen();
+      layer.classList.toggle('board-visible',open);
+      if(open)layer.replaceChildren();
+    }
+    new MutationObserver(syncBoardState).observe(drawer,{attributes:true,attributeFilter:['class']});
+
+    function updateHistory(){
+      const items=Array.from(list.querySelectorAll('.msg-item'));
+      if(!items.length) {
+        // The original loader clears the list while fetching. Keep the previous
+        // successful history in that temporary state.
+        if(list.textContent.includes('云端空空如也')) history=[];
+        return;
+      }
+      history=items.map(item=>{
+        const user=item.querySelector('.msg-header span');
+        const children=item.children;
+        const text=children.length>1 ? children[children.length-1].textContent : '';
+        return {user:user ? user.textContent.replace(/^👤\\s*/,'').trim() : '', text:text.trim()};
+      }).filter(msg=>msg.text);
+      recentIndex=0;
+    }
+    new MutationObserver(updateHistory).observe(list,{childList:true,subtree:false});
+    updateHistory();
+
+    function addFloatingMessage(){
+      if(!history.length || boardIsOpen() || app.style.display==='none') return;
+      if(layer.childElementCount>=7)return;
+      const recent=history.slice(-25);
+      const msg=recent[recent.length-1-(recentIndex++%recent.length)];
+      const item=document.createElement('div');
+      item.className='floating-message';
+      item.textContent=(msg.user ? msg.user+'：' : '')+msg.text;
+      layer.appendChild(item);
+
+      const width=app.clientWidth,height=app.clientHeight;
+      const scale=Math.min(1,width/430,height/530);
+      const heartWidth=155*scale;
+      const heartHeight=115*scale;
+      const x=width/2+(Math.random()*2-1)*heartWidth;
+      const y=height/2+22+(Math.random()*2-1)*heartHeight;
+
+      // Clamp after the element is measured, especially for narrow iPhones.
+      const itemWidth=item.offsetWidth || 120;
+      const itemHeight=item.offsetHeight || 20;
+      item.style.left=Math.round(Math.max(8,Math.min(width-itemWidth-15,x-itemWidth/2)))+'px';
+      item.style.top=Math.round(Math.max(40,Math.min(height-itemHeight-32,y)))+'px';
+
+      if(reduced){
+        while(layer.childElementCount>5)layer.firstElementChild.remove();
+      } else {
+        const duration=10+Math.random()*4;
+        item.style.setProperty('--drift-duration',duration+'s');
+        item.addEventListener('animationend',()=>item.remove(),{once:true});
+      }
+    }
+    function whenVisible(){
+      if(app.style.display==='none')return;
+      // Initial historical messages are loaded by checkLogin() on login.
+      if(layer.childElementCount===0 && history.length) {
+        addFloatingMessage();addFloatingMessage();
+      }
+    }
+    new MutationObserver(whenVisible).observe(app,{attributes:true,attributeFilter:['style']});
+    syncBoardState();
+    setInterval(()=>{
+      if(app.style.display==='none')return;
+      addFloatingMessage();
+    },2600);
+    // Refresh the original GitHub-backed list periodically so new messages
+    // from the other user can appear without reopening the panel.
+    setInterval(()=>{
+      if(app.style.display==='none' || boardIsOpen())return;
+      if(typeof window.loadMessagesFromGitHub==='function') {
+        window.loadMessagesFromGitHub().catch(error=>console.warn('Floating message refresh:',error));
+      }
+    },60000);
+  }
+  setupFloatingMessages();
+
   const greeting = document.getElementById('greeting-text');
   if (greeting) {
     const update = () => {
