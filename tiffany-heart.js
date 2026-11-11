@@ -276,6 +276,8 @@
           weight=1.15; // Lower center: within 15 degrees on either side
         } else if(point.y<0 && ax>=35 && ax<110) {
           weight=2.0;  // Lower diagonal sides
+        } else if(point.y>=110 && ax>=25 && ax<130) {
+          weight=1.8;  // Restore density around BOTH upper heart-lobe peaks
         } else if(point.y>=0 && ax>=35 && ax<110
                   && upperAngleDeg>=40 && upperAngleDeg<=45) {
           weight=1.15; // Upper diagonals: 40-45 degrees
