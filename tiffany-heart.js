@@ -1,5 +1,5 @@
 /*
- * Tiffany-blue WebGL flowing heart, preserving the original Love.svelte shader.
+ * Two-stage Tiffany heart: Love.svelte WebGL intro, then Heart.svelte particle heart.
  * Adapted from the glowing-heart shader in xijaja/love-you:
  * https://github.com/xijaja/love-you/blob/main/src/lib/Love.svelte
  * Replaces only the heart renderer. GitHub messages and login remain unchanged.
@@ -7,7 +7,6 @@
 (() => {
   'use strict';
 
-  const originalInitHeart = window.initHeart;
   let running = false;
 
   const vertexShaderSource = `
@@ -175,72 +174,191 @@
   }
 
 
-  function startWebGLHeart() {
-    if (running) return;
-    const canvas = document.getElementById('pinkboard');
-    if (!canvas) return;
 
-    let gl;
-    try {
-      gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: false });
-    } catch (e) { /* Browser may not support WebGL. */ }
-    if (!gl) {
-      if (typeof originalInitHeart === 'function') originalInitHeart();
-      return;
+  // Stage 2: adapted from xijaja/love-you/src/lib/Heart.svelte.
+  // Spawn tiny Tiffany-colored heart sprites along the mathematical heart
+  // boundary, then move outward and fade over the original 3-second lifetime.
+  function startParticleHeart() {
+    if (document.getElementById('tiffany-particle-stage')) return;
+    const app = document.getElementById('app-content');
+    if (!app) return;
+    const canvas = document.createElement('canvas');
+    canvas.id = 'tiffany-particle-stage';
+    canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;';
+    app.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const config = { length: 600, duration: 3, velocity: 60, effect: -0.6, size: 24 };
+    const spriteCanvas = document.createElement('canvas');
+    spriteCanvas.width = spriteCanvas.height = config.size;
+    const spriteCtx = spriteCanvas.getContext('2d');
+
+    function pointOnHeart(t) {
+      return {
+        x: 160 * Math.pow(Math.sin(t), 3),
+        y: 130 * Math.cos(t) - 50 * Math.cos(2 * t)
+           - 20 * Math.cos(3 * t) - 10 * Math.cos(4 * t) + 25
+      };
+    }
+    // Same tiny-heart particle image approach as the upstream Heart.svelte.
+    spriteCtx.beginPath();
+    let pt = pointOnHeart(-Math.PI);
+    spriteCtx.moveTo(config.size/2 + pt.x*config.size/350,
+                     config.size/2 - pt.y*config.size/350);
+    for(let t=-Math.PI; t<=Math.PI; t+=0.01) {
+      pt=pointOnHeart(t);
+      spriteCtx.lineTo(config.size/2 + pt.x*config.size/350,
+                       config.size/2 - pt.y*config.size/350);
+    }
+    spriteCtx.closePath();
+    spriteCtx.fillStyle='#81D8D0';
+    spriteCtx.fill();
+
+    const particles = [];
+    let firstActive = 0, firstFree = 0;
+    for(let i=0; i<config.length; i++) {
+      particles.push({x:0,y:0,vx:0,vy:0,ax:0,ay:0,age:config.duration});
+    }
+    function emit(x,y,vx,vy) {
+      const p=particles[firstFree];
+      p.x=x;p.y=y;p.vx=vx;p.vy=vy;
+      p.ax=vx*config.effect;p.ay=vy*config.effect;p.age=0;
+      firstFree=(firstFree+1)%config.length;
+      if(firstFree===firstActive) firstActive=(firstActive+1)%config.length;
+    }
+    function eachActive(fn) {
+      let i=firstActive;
+      while(i!==firstFree) {fn(particles[i]);i=(i+1)%config.length;}
     }
 
-    try {
-      const vertex = compile(gl, gl.VERTEX_SHADER, vertexShaderSource);
-      const fragment = compile(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
-      const program = gl.createProgram();
-      gl.attachShader(program, vertex);
-      gl.attachShader(program, fragment);
-      gl.linkProgram(program);
-      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        throw new Error(gl.getProgramInfoLog(program));
+    let w=1,h=1,dpr=1,heartScale=1;
+    function resize(){
+      w=Math.max(1,canvas.clientWidth);
+      h=Math.max(1,canvas.clientHeight);
+      dpr=Math.min(window.devicePixelRatio||1,2);
+      canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+      // Upstream uses an approx. 320px-wide heart; shrink on narrow screens.
+      heartScale=Math.min(1, w/430, h/530);
+    }
+    resize();
+    window.addEventListener('resize',resize,{passive:true});
+
+    const rate=config.length/config.duration;
+    let last=performance.now(),fraction=0;
+    const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function draw(now) {
+      const dt=Math.min((now-last)/1000,.055);
+      last=now;
+      ctx.clearRect(0,0,w,h);
+      if(!reduced) {
+        fraction+=rate*dt;
+        while(fraction>=1) {
+          fraction--;
+          const pos=pointOnHeart(Math.PI-2*Math.PI*Math.random());
+          const length=Math.hypot(pos.x,pos.y)||1;
+          const vx=pos.x/length*config.velocity*heartScale;
+          const vy=-pos.y/length*config.velocity*heartScale;
+          emit(w/2+pos.x*heartScale,
+               h/2-pos.y*heartScale+22,
+               vx,vy);
+        }
       }
+      eachActive(p => {
+        if(!reduced){
+          p.x+=p.vx*dt;p.y+=p.vy*dt;
+          p.vx+=p.ax*dt;p.vy+=p.ay*dt;
+          p.age+=dt;
+        }
+        const life=Math.min(1,p.age/config.duration);
+        if(life>=1)return;
+        const eased=1-Math.pow(1-life,3);
+        const spriteSize=config.size*heartScale*eased;
+        ctx.globalAlpha=1-life;
+        ctx.drawImage(spriteCanvas,p.x-spriteSize/2,p.y-spriteSize/2,spriteSize,spriteSize);
+      });
+      ctx.globalAlpha=1;
+      while(firstActive!==firstFree &&
+            particles[firstActive].age>=config.duration) {
+        firstActive=(firstActive+1)%config.length;
+      }
+      if(!reduced)requestAnimationFrame(draw);
+    }
+    if(reduced) {
+      // A static filled set of little hearts for reduced-motion settings.
+      for(let i=0;i<500;i++) {
+        const pos=pointOnHeart(Math.PI-2*Math.PI*Math.random());
+        emit(w/2+pos.x*heartScale,h/2-pos.y*heartScale+22,0,0);
+        particles[(firstFree+config.length-1)%config.length].age=Math.random()*2.6;
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+
+  // Stage 1: the original WebGL Love.svelte flowing-light animation.
+  // Show it for two seconds, then switch to the separate Heart.svelte canvas.
+  function startWebGLHeart() {
+    if (running) return;
+    running=true;
+    const canvas = document.getElementById('pinkboard');
+    if (!canvas) return;
+    let switched=false;
+    function switchToParticles(){
+      if(switched)return;
+      switched=true;
+      canvas.style.display='none';
+      startParticleHeart();
+    }
+    let gl;
+    try {
+      gl=canvas.getContext('webgl', {alpha:true,premultipliedAlpha:false});
+      if(!gl) {switchToParticles();return;}
+      const vertex=compile(gl,gl.VERTEX_SHADER,vertexShaderSource);
+      const fragment=compile(gl,gl.FRAGMENT_SHADER,fragmentShaderSource);
+      const program=gl.createProgram();
+      gl.attachShader(program,vertex);
+      gl.attachShader(program,fragment);
+      gl.linkProgram(program);
+      if(!gl.getProgramParameter(program,gl.LINK_STATUS))
+        throw new Error(gl.getProgramInfoLog(program));
       gl.useProgram(program);
       gl.deleteShader(vertex);
       gl.deleteShader(fragment);
 
-      const position = gl.getAttribLocation(program, 'position');
-      const resolution = gl.getUniformLocation(program, 'resolution');
-      const time = gl.getUniformLocation(program, 'time');
-      const buffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-        -1, 1, -1, -1, 1, 1, 1, -1
-      ]), gl.STATIC_DRAW);
+      const position=gl.getAttribLocation(program,'position');
+      const resolution=gl.getUniformLocation(program,'resolution');
+      const time=gl.getUniformLocation(program,'time');
+      const buffer=gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
+      gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,1,-1,-1,1,1,1,-1]),gl.STATIC_DRAW);
       gl.enableVertexAttribArray(position);
-      gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+      gl.vertexAttribPointer(position,2,gl.FLOAT,false,0,0);
 
-      let width = 0;
-      let height = 0;
-      function resize() {
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        width = Math.max(1, Math.round(canvas.clientWidth * dpr));
-        height = Math.max(1, Math.round(canvas.clientHeight * dpr));
-        if (canvas.width !== width || canvas.height !== height) {
-          canvas.width = width;
-          canvas.height = height;
-        }
-        gl.viewport(0, 0, width, height);
-        gl.uniform2f(resolution, width, height);
+      function resize(){
+        const dpr=Math.min(window.devicePixelRatio||1,2);
+        canvas.width=Math.max(1,Math.round(canvas.clientWidth*dpr));
+        canvas.height=Math.max(1,Math.round(canvas.clientHeight*dpr));
+        gl.viewport(0,0,canvas.width,canvas.height);
+        gl.uniform2f(resolution,canvas.width,canvas.height);
       }
       resize();
-      window.addEventListener('resize', resize, { passive: true });
+      window.addEventListener('resize',()=>{if(!switched)resize();},{passive:true});
 
-      const start = performance.now();
-      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      function draw(now) {
-        gl.uniform1f(time, reducedMotion ? 0 : (now - start) * 0.001);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-        if (!reducedMotion) requestAnimationFrame(draw);
+      const start=performance.now();
+      const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      function draw(now){
+        if(switched)return;
+        if(reduced || now-start>=2000){switchToParticles();return;}
+        // Upstream Love.svelte advances time by 0.015 per frame.
+        gl.uniform1f(time,(now-start)*.0009);
+        gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+        requestAnimationFrame(draw);
       }
-      running = true;
       requestAnimationFrame(draw);
-    } catch (e) {
-      console.error('WebGL heart initialization failed:', e);
+    } catch(error) {
+      console.error('WebGL intro failed; showing particle heart instead:',error);
+      switchToParticles();
     }
   }
 
