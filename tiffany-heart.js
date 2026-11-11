@@ -192,7 +192,7 @@
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const config = { length: 750, duration: 3, velocity: 60, effect: -0.6, size: 24 };
+    const config = { length: 999, duration: 3, velocity: 60, effect: -0.6, size: 24 };
     const spriteCanvas = document.createElement('canvas');
     spriteCanvas.width = spriteCanvas.height = config.size;
     const spriteCtx = spriteCanvas.getContext('2d');
