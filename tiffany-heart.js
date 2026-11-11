@@ -1,4 +1,4 @@
-/* Tiffany-blue beating particle heart. Load after the original inline script. */
+/* Tiffany-blue heart with individually bouncing particles; load after the original inline script. */
 (() => {
   'use strict';
   const COLOR = [129, 216, 208]; // #81D8D0
@@ -86,7 +86,6 @@
       const pulse1 = Math.exp(-Math.pow((beatPeriod - .13) / .075, 2));
       const pulse2 = .52 * Math.exp(-Math.pow((beatPeriod - .37) / .085, 2));
       const beating = motionReduced ? 0 : pulse1 + pulse2;
-      const scale = 1 + .075 * beating;
       const cx = width / 2;
       const cy = height / 2 + Math.min(22, height * .027);
 
@@ -101,14 +100,21 @@
       ctx.fill();
 
       for (const p of points) {
-        const twinkle = motionReduced ? 1 : .76 + .24 * Math.sin(elapsed * p.speed * 3 + p.phase);
-        const drift = motionReduced ? 0 : Math.sin(elapsed * p.speed + p.phase) * (p.offset ? 7 : 1.2);
-        const x = cx + p.x * size * scale + drift;
-        const y = cy + p.y * size * scale + (p.offset ? drift * .6 : 0);
-        const alpha = Math.min(1, p.strength * twinkle * (1 + .25 * beating));
+        // Each particle springs on its own, while the heart outline stays stationary.
+        // A traveling wave makes the tiny bounces propagate through the heart.
+        const wave = elapsed * (6.0 + p.speed * 1.8) - p.y * 5.0 + p.x * 2.8 + p.phase;
+        const bounce = motionReduced ? 0 : Math.pow(Math.max(0, Math.sin(wave)), 3);
+        const flutter = motionReduced ? 0 : Math.sin(elapsed * (2.1 + p.speed) + p.phase) * 1.35;
+        const distance = Math.hypot(p.x, p.y) || 1;
+        const edgeFactor = p.offset ? 1.6 : .55 + .45 * Math.min(1, distance);
+        const jump = (bounce * (p.offset ? 12 : 7) + flutter) * edgeFactor;
+        const x = cx + p.x * size + (p.x / distance) * jump;
+        const y = cy + p.y * size + (p.y / distance) * jump - bounce * (p.offset ? 2 : 3);
+        const twinkle = motionReduced ? 1 : .55 + .45 * Math.sin(wave + 1.4) ** 2;
+        const alpha = Math.min(1, p.strength * twinkle * (1 + .6 * bounce + .18 * beating));
         ctx.fillStyle = glow(alpha);
         ctx.beginPath();
-        ctx.arc(x, y, p.r * (1 + .12 * beating), 0, Math.PI * 2);
+        ctx.arc(x, y, p.r * (1 + .35 * bounce), 0, Math.PI * 2);
         ctx.fill();
         if (p.halo) {
           ctx.fillStyle = glow(alpha * .11);
