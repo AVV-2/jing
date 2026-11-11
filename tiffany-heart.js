@@ -245,7 +245,7 @@
     resize();
     window.addEventListener('resize',resize,{passive:true});
 
-    const spawnInset=0.90; // Spawn particles 10% closer to heart center.
+    const spawnInset=0.75; // Spawn particles 25% closer to heart center.
     const rate=config.length/config.duration;
     let last=performance.now(),fraction=0;
     const breathStart=last;
@@ -255,10 +255,10 @@
       last=now;
       ctx.clearRect(0,0,w,h);
 
-      // More visible 4-second breathing cycle: original size -> 112% -> original size.
+      // Stronger 4-second breathing cycle: original size -> 125% -> original size.
       // Transform just this particle canvas, keeping the greeting and intro unchanged.
       const phase=(now-breathStart)/4000*2*Math.PI;
-      const breath=reduced ? 1 : 1.06-0.06*Math.cos(phase);
+      const breath=reduced ? 1 : 1.125-0.125*Math.cos(phase);
       const centerX=w/2,centerY=h/2+22;
       ctx.save();
       ctx.translate(centerX,centerY);
