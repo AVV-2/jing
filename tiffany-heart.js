@@ -60,16 +60,16 @@
         res = length(v);
       } else {
         float z = sqrt(-p);
-        float v = acos(clamp(q/(p*z*2.0), -1.0, 1.0)) / 3.0;
-        float m = cos(v);
-        float n = sin(v) * 1.732050808;
+        float angle = acos(clamp(q/(p*z*2.0), -1.0, 1.0)) / 3.0;
+        float m = cos(angle);
+        float n = sin(angle) * 1.732050808;
         vec3 t = clamp(vec3(m+m, -n-m, n-m) * z - kx, 0.0, 1.0);
-        vec2 v = d + (c+b*t.x)*t.x;
-        res = dot(v,v);
-        v = d + (c+b*t.y)*t.y;
-        res = min(res, dot(v,v));
-        v = d + (c+b*t.z)*t.z;
-        res = sqrt(min(res, dot(v,v)));
+        vec2 delta = d + (c+b*t.x)*t.x;
+        res = dot(delta,delta);
+        delta = d + (c+b*t.y)*t.y;
+        res = min(res, dot(delta,delta));
+        delta = d + (c+b*t.z)*t.z;
+        res = sqrt(min(res, dot(delta,delta)));
       }
       return res;
     }
