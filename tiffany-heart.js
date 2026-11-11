@@ -23,6 +23,8 @@
     uniform vec2 resolution;
     
     uniform float time;
+    uniform float heartScalePixels;
+    uniform float heartShiftPixels;
     
     #define POINT_COUNT 8
     
@@ -128,8 +130,9 @@
         vec2 pos = centre - uv;
         pos.y /= widthHeightRatio;
         //Shift upwards to centre heart
-        pos.y += 0.02;
-        float scale = 0.000015 * resolution.y;
+        pos.y += heartShiftPixels / resolution.x;
+        // Match the second-stage Heart.svelte shape: 160 CSS px half-width at scale 1.
+        float scale = (10.0 * heartScalePixels) / resolution.x;
     
         float t = time;
     
@@ -245,7 +248,7 @@
     resize();
     window.addEventListener('resize',resize,{passive:true});
 
-    const spawnInset=0.75; // Spawn particles 25% closer to heart center.
+    const spawnInset=0.55; // Spawn particles 45% closer to heart center.
     const rate=config.length/config.duration;
     let last=performance.now(),fraction=0;
     const breathStart=last;
@@ -255,10 +258,10 @@
       last=now;
       ctx.clearRect(0,0,w,h);
 
-      // Stronger 4-second breathing cycle: original size -> 125% -> original size.
+      // Stronger 4-second breathing cycle: original size -> 135% -> original size.
       // Transform just this particle canvas, keeping the greeting and intro unchanged.
       const phase=(now-breathStart)/4000*2*Math.PI;
-      const breath=reduced ? 1 : 1.125-0.125*Math.cos(phase);
+      const breath=reduced ? 1 : 1.175-0.175*Math.cos(phase);
       const centerX=w/2,centerY=h/2+22;
       ctx.save();
       ctx.translate(centerX,centerY);
@@ -342,6 +345,8 @@
       const position=gl.getAttribLocation(program,'position');
       const resolution=gl.getUniformLocation(program,'resolution');
       const time=gl.getUniformLocation(program,'time');
+      const heartScalePixels=gl.getUniformLocation(program,'heartScalePixels');
+      const heartShiftPixels=gl.getUniformLocation(program,'heartShiftPixels');
       const buffer=gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
       gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,1,-1,-1,1,1,1,-1]),gl.STATIC_DRAW);
@@ -354,6 +359,10 @@
         canvas.height=Math.max(1,Math.round(canvas.clientHeight*dpr));
         gl.viewport(0,0,canvas.width,canvas.height);
         gl.uniform2f(resolution,canvas.width,canvas.height);
+        // Match the particle heart's responsive size and visual center in device pixels.
+        const scale=Math.min(1,canvas.clientWidth/430,canvas.clientHeight/530);
+        gl.uniform1f(heartScalePixels,scale*dpr);
+        gl.uniform1f(heartShiftPixels,(25*scale-22)*dpr);
       }
       resize();
       window.addEventListener('resize',()=>{if(!switched)resize();},{passive:true});
