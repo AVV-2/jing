@@ -108,8 +108,8 @@
       float glow1 = pow(0.015 / d1, 0.90);
       float glow2 = pow(0.015 / d2, 0.90);
       vec3 col = glow1*tiffany + glow2*pale;
-      col += 7.0 * vec3(1.0) * (smoothstep(0.003, 0.001, d1)
-                              + smoothstep(0.003, 0.001, d2));
+      col += 7.0 * vec3(1.0) * ((1.0 - smoothstep(0.001, 0.003, d1))
+                              + (1.0 - smoothstep(0.001, 0.003, d2)));
       col = 1.0 - exp(-col);
 
       // Transparent away from the glow so the original purple backdrop remains.
