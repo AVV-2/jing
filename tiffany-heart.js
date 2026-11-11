@@ -247,11 +247,22 @@
 
     const rate=config.length/config.duration;
     let last=performance.now(),fraction=0;
+    const breathStart=last;
     const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     function draw(now) {
       const dt=Math.min((now-last)/1000,.055);
       last=now;
       ctx.clearRect(0,0,w,h);
+
+      // Gentle 4-second breathing cycle: original size -> 105% -> original size.
+      // Transform just this particle canvas, keeping the greeting and intro unchanged.
+      const phase=(now-breathStart)/4000*2*Math.PI;
+      const breath=reduced ? 1 : 1.025-0.025*Math.cos(phase);
+      const centerX=w/2,centerY=h/2+22;
+      ctx.save();
+      ctx.translate(centerX,centerY);
+      ctx.scale(breath,breath);
+      ctx.translate(-centerX,-centerY);
       if(!reduced) {
         fraction+=rate*dt;
         while(fraction>=1) {
@@ -279,6 +290,7 @@
         ctx.drawImage(spriteCanvas,p.x-spriteSize/2,p.y-spriteSize/2,spriteSize,spriteSize);
       });
       ctx.globalAlpha=1;
+      ctx.restore();
       while(firstActive!==firstFree &&
             particles[firstActive].age>=config.duration) {
         firstActive=(firstActive+1)%config.length;
