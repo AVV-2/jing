@@ -464,22 +464,16 @@
       background: rgba(15, 9, 29, .84) !important;
       box-shadow: 0 14px 35px rgba(0,0,0,.30) !important;
     }
-    .msg-item { border: 0 !important; font-size: 16pt !important; }
-    .msg-header { font-size: 16pt !important; gap: 12px; flex-wrap: wrap; }
-    .message-list, .loading-text { font-size: 16pt !important; }
+    .msg-item { border: 0 !important; }
     .board-input-area {
       border-top: 0 !important;
       align-items: center;
     }
     .board-input-area input, #msg-input {
-      min-width: 0; width: 100%; font-size: 16pt !important;
+      min-width: 0; width: 100%; font-size: 17px !important;
       line-height: 1.35; -webkit-text-size-adjust: 100%;
     }
-    .board-input-area button, .toggle-board-btn {
-      font-size: 16pt !important;
-    }
     .board-input-area button { padding-inline: 12px; flex-shrink: 0; }
-    .toggle-board-btn { padding: 7px 12px; }
     #greeting-text { z-index: 5 !important; }
     #floating-messages {
       position: absolute; inset: 0; z-index: 3;
@@ -488,11 +482,11 @@
     #floating-messages .floating-message {
       position: absolute; left: 0; top: 0;
       display: inline-block; max-width: min(60vw, 260px);
-      color: rgba(221, 255, 249, .92);
+      color: rgba(255, 132, 177, .95);
       font-size: clamp(12px, 3.3vw, 16px);
       font-weight: 500; line-height: 1.35;
       overflow-wrap: anywhere;
-      text-shadow: 0 0 7px rgba(129,216,208,.75);
+      text-shadow: 0 0 8px rgba(255, 105, 160, .68);
       opacity: 0;
       will-change: transform, opacity;
       animation: messageDrift var(--drift-duration, 11s) linear forwards;
@@ -544,7 +538,7 @@
         const user=item.querySelector('.msg-header span');
         const children=item.children;
         const text=children.length>1 ? children[children.length-1].textContent : '';
-        return {user:user ? user.textContent.replace(/^👤\\s*/,'').trim() : '', text:text.trim()};
+        return {user:user ? user.textContent.replace('👤','').trim() : '', text:text.trim()};
       }).filter(msg=>msg.text);
       recentIndex=0;
     }
