@@ -1,4 +1,4 @@
-/* Tiffany-blue heart with individually bouncing particles; load after the original inline script. */
+/* Tiffany-blue static heart shape, with independently hopping glitter particles. */
 (() => {
   'use strict';
   const COLOR = [129, 216, 208]; // #81D8D0
@@ -80,46 +80,39 @@
     function draw(now) {
       const elapsed = (now - start) / 1000;
       ctx.clearRect(0, 0, width, height);
-
-      // Lub-dub: two close pulses then a short rest.
-      const beatPeriod = elapsed % 1.24;
-      const pulse1 = Math.exp(-Math.pow((beatPeriod - .13) / .075, 2));
-      const pulse2 = .52 * Math.exp(-Math.pow((beatPeriod - .37) / .085, 2));
-      const beating = motionReduced ? 0 : pulse1 + pulse2;
       const cx = width / 2;
       const cy = height / 2 + Math.min(22, height * .027);
 
-      // Subtle diffused bloom behind the heart.
-      const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 1.22);
-      bloom.addColorStop(0, glow(.075 + beating * .035));
-      bloom.addColorStop(.65, glow(.022));
+      // Constant soft background glow, never pulsating.
+      const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 1.23);
+      bloom.addColorStop(0, glow(.045));
+      bloom.addColorStop(.7, glow(.012));
       bloom.addColorStop(1, glow(0));
       ctx.fillStyle = bloom;
       ctx.beginPath();
-      ctx.arc(cx, cy, size * 1.22, 0, Math.PI * 2);
+      ctx.arc(cx, cy, size * 1.23, 0, Math.PI * 2);
       ctx.fill();
 
       for (const p of points) {
-        // Each particle springs on its own, while the heart outline stays stationary.
-        // A traveling wave makes the tiny bounces propagate through the heart.
-        const wave = elapsed * (6.0 + p.speed * 1.8) - p.y * 5.0 + p.x * 2.8 + p.phase;
-        const bounce = motionReduced ? 0 : Math.pow(Math.max(0, Math.sin(wave)), 3);
-        const flutter = motionReduced ? 0 : Math.sin(elapsed * (2.1 + p.speed) + p.phase) * 1.35;
-        const distance = Math.hypot(p.x, p.y) || 1;
-        const edgeFactor = p.offset ? 1.6 : .55 + .45 * Math.min(1, distance);
-        const jump = (bounce * (p.offset ? 12 : 7) + flutter) * edgeFactor;
-        const x = cx + p.x * size + (p.x / distance) * jump;
-        const y = cy + p.y * size + (p.y / distance) * jump - bounce * (p.offset ? 2 : 3);
-        const twinkle = motionReduced ? 1 : .55 + .45 * Math.sin(wave + 1.4) ** 2;
-        const alpha = Math.min(1, p.strength * twinkle * (1 + .6 * bounce + .18 * beating));
+        // Entire heart stays fixed. Each dot has its own unsynchronized motion.
+        // No global beat phase, no canvas scale, no shared growth/brightness.
+        const local = elapsed * (1.7 + p.speed * 2.3) + p.phase;
+        const hop = motionReduced ? 0 : Math.max(0, Math.sin(local)) ** 2;
+        const flutter = motionReduced ? 0 : Math.sin(local * .71 + p.phase) * .6;
+        const amplitude = p.offset ? 7.5 : (p.halo ? 4.0 : 2.7);
+        const x = cx + p.x * size + flutter;
+        const y = cy + p.y * size - hop * amplitude;
+        const twinkle = motionReduced ? 1 : .7 + .3 * Math.sin(local + .8) ** 2;
+        const alpha = Math.min(1, p.strength * (twinkle + .18 * hop));
+        const dotRadius = p.r * (1 + .28 * hop);
         ctx.fillStyle = glow(alpha);
         ctx.beginPath();
-        ctx.arc(x, y, p.r * (1 + .35 * bounce), 0, Math.PI * 2);
+        ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
         ctx.fill();
         if (p.halo) {
-          ctx.fillStyle = glow(alpha * .11);
+          ctx.fillStyle = glow(alpha * .10);
           ctx.beginPath();
-          ctx.arc(x, y, p.r * 4, 0, Math.PI * 2);
+          ctx.arc(x, y, dotRadius * 4.2, 0, Math.PI * 2);
           ctx.fill();
         }
       }
@@ -138,6 +131,8 @@
       text-shadow: 0 0 14px rgba(129,216,208,.85),
                    0 0 30px rgba(129,216,208,.35) !important;
       top: calc(50% + 22px) !important;
+      animation: none !important;
+      transform: translate(-50%, -50%) !important;
     }
   `;
   document.head.appendChild(css);
