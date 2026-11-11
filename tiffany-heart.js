@@ -270,7 +270,10 @@
       const centerX=w/2,centerY=h/2+22;
       ctx.save();
       ctx.translate(centerX,centerY);
-      ctx.scale(breath,breath);
+      // Uniformly shrink the entire particle heart by 20%, including
+      // particle positions, expansion paths and sprite sizes.
+      // Keep the existing 100%-135% breathing cycle relative to this size.
+      ctx.scale(breath*0.8,breath*0.8);
       ctx.translate(-centerX,-centerY);
       if(!reduced) {
         fraction+=rate*dt;
