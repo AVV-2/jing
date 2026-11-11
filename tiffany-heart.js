@@ -622,22 +622,25 @@
         item.addEventListener('animationend',()=>releaseMessage(item),{once:true});
       }
     }
-    function whenVisible(){
-      if(!particleStageStarted || app.style.display==='none')return;
-      // Initial historical messages are loaded by checkLogin() on login.
-      if(layer.childElementCount===0 && history.length) {
-        addFloatingMessage();addFloatingMessage();
-      }
+    // Wait for the WebGL intro to finish, then introduce just ONE message
+    // after a gentle delay. Continue one-at-a-time every 2.6 seconds.
+    // A single guarded scheduler prevents duplicate first-frame bursts.
+    let floatingScheduleStarted=false;
+    function beginFloatingMessages(){
+      if(floatingScheduleStarted || !particleStageStarted)return;
+      floatingScheduleStarted=true;
+      setTimeout(()=>{
+        if(app.style.display!=='none')addFloatingMessage();
+        setInterval(()=>{
+          if(app.style.display!=='none')addFloatingMessage();
+        },2600);
+      },900);
     }
-    new MutationObserver(whenVisible).observe(app,{attributes:true,attributeFilter:['style']});
-    window.addEventListener('tiffany-particles-started', whenVisible);
+    window.addEventListener('tiffany-particles-started',beginFloatingMessages);
     // Recalculate lanes after orientation/viewport changes.
     window.addEventListener('resize',()=>{occupied.clear();layer.replaceChildren();},{passive:true});
     syncBoardState();
-    setInterval(()=>{
-      if(app.style.display==='none')return;
-      addFloatingMessage();
-    },2600);
+    if(particleStageStarted)beginFloatingMessages();
     // Refresh the original GitHub-backed list periodically so new messages
     // from the other user can appear without reopening the panel.
     setInterval(()=>{
