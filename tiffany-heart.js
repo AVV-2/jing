@@ -96,15 +96,17 @@
       for (const p of points) {
         // Entire heart stays fixed. Each dot has its own unsynchronized motion.
         // No global beat phase, no canvas scale, no shared growth/brightness.
-        const local = elapsed * (1.7 + p.speed * 2.3) + p.phase;
-        const hop = motionReduced ? 0 : Math.max(0, Math.sin(local)) ** 2;
-        const flutter = motionReduced ? 0 : Math.sin(local * .71 + p.phase) * .6;
-        const amplitude = p.offset ? 7.5 : (p.halo ? 4.0 : 2.7);
-        const x = cx + p.x * size + flutter;
+        // Strong, independent local hopping; no shared scaling of the heart.
+        // Different speed/phase for every particle produces a lively shimmering heart.
+        const local = elapsed * (2.6 + p.speed * 3.4) + p.phase;
+        const hop = motionReduced ? 0 : Math.max(0, Math.sin(local)) ** 3;
+        const sideways = motionReduced ? 0 : Math.sin(local * .77 + p.phase * .4) * 3.2;
+        const amplitude = p.offset ? 19 : (p.halo ? 15 : 10);
+        const x = cx + p.x * size + sideways;
         const y = cy + p.y * size - hop * amplitude;
-        const twinkle = motionReduced ? 1 : .7 + .3 * Math.sin(local + .8) ** 2;
-        const alpha = Math.min(1, p.strength * (twinkle + .18 * hop));
-        const dotRadius = p.r * (1 + .28 * hop);
+        const twinkle = motionReduced ? 1 : .45 + .55 * Math.sin(local + .8) ** 2;
+        const alpha = Math.min(1, p.strength * (twinkle + .42 * hop));
+        const dotRadius = p.r * (1 + .72 * hop);
         ctx.fillStyle = glow(alpha);
         ctx.beginPath();
         ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
