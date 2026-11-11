@@ -8,6 +8,7 @@
   'use strict';
 
   let running = false;
+  let particleStageStarted = false;
 
   const vertexShaderSource = `
     attribute vec2 position;
@@ -379,6 +380,8 @@
       switched=true;
       canvas.style.display='none';
       startParticleHeart();
+      particleStageStarted = true;
+      window.dispatchEvent(new Event('tiffany-particles-started'));
     }
     let gl;
     try {
@@ -565,7 +568,7 @@
     updateHistory();
 
     function addFloatingMessage(){
-      if(!history.length || boardIsOpen() || app.style.display==='none') return;
+      if(!particleStageStarted || !history.length || boardIsOpen() || app.style.display==='none') return;
       if(layer.childElementCount>=7)return;
       // Newest -> oldest, one message per successful placement; cycle only
       // the 15 most recent messages before starting with the newest again.
@@ -620,13 +623,14 @@
       }
     }
     function whenVisible(){
-      if(app.style.display==='none')return;
+      if(!particleStageStarted || app.style.display==='none')return;
       // Initial historical messages are loaded by checkLogin() on login.
       if(layer.childElementCount===0 && history.length) {
         addFloatingMessage();addFloatingMessage();
       }
     }
     new MutationObserver(whenVisible).observe(app,{attributes:true,attributeFilter:['style']});
+    window.addEventListener('tiffany-particles-started', whenVisible);
     // Recalculate lanes after orientation/viewport changes.
     window.addEventListener('resize',()=>{occupied.clear();layer.replaceChildren();},{passive:true});
     syncBoardState();
