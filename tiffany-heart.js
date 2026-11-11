@@ -248,6 +248,14 @@
     resize();
     window.addEventListener('resize',resize,{passive:true});
 
+    // Keep the moving particles born 65% inward, but anchor outer dots
+    // to the exact original heart equation and responsive scale.
+    const rim=Array.from({length:520},(_,i)=>({
+      t:2*Math.PI*i/520,
+      phase:Math.random()*Math.PI*2,
+      speed:.6+Math.random()*1.2,
+      radius:.65+Math.random()*.8
+    }));
     const spawnInset=0.35; // Spawn particles 65% closer to heart center.
     const rate=config.length/config.duration;
     let last=performance.now(),fraction=0;
@@ -294,6 +302,22 @@
         ctx.drawImage(spriteCanvas,p.x-spriteSize/2,p.y-spriteSize/2,spriteSize,spriteSize);
       });
       ctx.globalAlpha=1;
+
+      // Gently twinkling outer rim follows the exact heart curve and
+      // shares the same breathing transform as all the inner particles.
+      ctx.shadowColor='#81D8D0';
+      ctx.shadowBlur=6;
+      for(const dot of rim) {
+        const p=pointOnHeart(dot.t);
+        const shimmer=reduced ? .65 : .53+.25*Math.sin(now*.001*dot.speed*2+dot.phase);
+        ctx.fillStyle='rgba(129,216,208,'+shimmer+')';
+        ctx.beginPath();
+        ctx.arc(centerX+p.x*heartScale,
+                centerY-p.y*heartScale,
+                dot.radius*heartScale,0,Math.PI*2);
+        ctx.fill();
+      }
+      ctx.shadowBlur=0;
       ctx.restore();
       while(firstActive!==firstFree &&
             particles[firstActive].age>=config.duration) {
@@ -393,7 +417,7 @@
       color: #c6f8f3 !important;
       text-shadow: 0 0 12px rgba(129,216,208,.8),
                    0 0 25px rgba(129,216,208,.35) !important;
-      top: calc(50% + 22px - 15pt) !important;
+      top: calc(50% + 22px - 10pt) !important;
       transform: translate(-50%, -50%) !important;
       animation: none !important;
     }
