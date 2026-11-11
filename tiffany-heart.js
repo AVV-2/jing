@@ -300,10 +300,10 @@
       last=now;
       ctx.clearRect(0,0,w,h);
 
-      // Stronger 4-second breathing cycle: original size -> 135% -> original size.
+      // Stronger 4-second breathing cycle: original size -> 125% -> original size.
       // Transform just this particle canvas, keeping the greeting and intro unchanged.
       const phase=(now-breathStart)/4000*2*Math.PI;
-      const breath=reduced ? 1 : 1.175-0.175*Math.cos(phase);
+      const breath=reduced ? 1 : 1.125-0.125*Math.cos(phase);
       const centerX=w/2,centerY=h/2+22;
       ctx.save();
       ctx.translate(centerX,centerY);
