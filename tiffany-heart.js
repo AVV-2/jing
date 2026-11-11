@@ -517,6 +517,7 @@
 
     let history=[];
     let recentIndex=0;
+    let historySignature='';
     // Reserve the full horizontal animation sweep plus text height for each
     // visible message. This prevents collisions throughout the drift.
     const occupied=new Map();
@@ -538,16 +539,27 @@
       if(!items.length) {
         // The original loader clears the list while fetching. Keep the previous
         // successful history in that temporary state.
-        if(list.textContent.includes('云端空空如也')) history=[];
+        if(list.textContent.includes('云端空空如也')) {
+          history=[];
+          historySignature='';
+          recentIndex=0;
+        }
         return;
       }
-      history=items.map(item=>{
+      const nextHistory=items.map(item=>{
         const user=item.querySelector('.msg-header span');
         const children=item.children;
         const text=children.length>1 ? children[children.length-1].textContent : '';
         return {user:user ? user.textContent.replace('👤','').trim() : '', text:text.trim()};
       }).filter(msg=>msg.text);
-      recentIndex=0;
+      // Stored messages are appended oldest-to-newest. Only restart from the
+      // newest when the actual history changes; periodic reloads don't rewind.
+      const nextSignature=JSON.stringify(nextHistory);
+      if(nextSignature!==historySignature){
+        history=nextHistory;
+        historySignature=nextSignature;
+        recentIndex=0;
+      }
     }
     new MutationObserver(updateHistory).observe(list,{childList:true,subtree:false});
     updateHistory();
@@ -555,8 +567,9 @@
     function addFloatingMessage(){
       if(!history.length || boardIsOpen() || app.style.display==='none') return;
       if(layer.childElementCount>=7)return;
-      const recent=history.slice(-25);
-      const msg=recent[recent.length-1-(recentIndex%recent.length)];
+      // Newest -> oldest, one message per successful placement; cycle all
+      // history once before starting again with the newest message.
+      const msg=history[history.length-1-(recentIndex%history.length)];
       const item=document.createElement('div');
       item.className='floating-message';
       item.textContent=(msg.user ? msg.user+'：' : '')+msg.text;
