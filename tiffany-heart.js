@@ -567,9 +567,10 @@
     function addFloatingMessage(){
       if(!history.length || boardIsOpen() || app.style.display==='none') return;
       if(layer.childElementCount>=7)return;
-      // Newest -> oldest, one message per successful placement; cycle all
-      // history once before starting again with the newest message.
-      const msg=history[history.length-1-(recentIndex%history.length)];
+      // Newest -> oldest, one message per successful placement; cycle only
+      // the 15 most recent messages before starting with the newest again.
+      const recent=history.slice(-15);
+      const msg=recent[recent.length-1-(recentIndex%recent.length)];
       const item=document.createElement('div');
       item.className='floating-message';
       item.textContent=(msg.user ? msg.user+'：' : '')+msg.text;
