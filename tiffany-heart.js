@@ -254,6 +254,17 @@
     // original outward velocity, acceleration, fade and full-sized shape.
     // No additional rim/outline is rendered.
     const spawnInset=0.35;
+
+    // Relative birth weights: left/right lobes 1.5x, upper/lower
+    // center strands 0.7x. Rejection sampling keeps the overall
+    // particle count and original heart geometry unchanged.
+    function sampleHeartPoint() {
+      for (;;) {
+        const point=pointOnHeart(Math.PI-2*Math.PI*Math.random());
+        const weight=Math.abs(point.x)>=90 ? 1.5 : 0.7;
+        if(Math.random()*1.5<=weight) return point;
+      }
+    }
     const rate=config.length/config.duration;
     let last=performance.now(),fraction=0;
     const breathStart=last;
@@ -279,7 +290,7 @@
         fraction+=rate*dt;
         while(fraction>=1) {
           fraction--;
-          const pos=pointOnHeart(Math.PI-2*Math.PI*Math.random());
+          const pos=sampleHeartPoint();
           const length=Math.hypot(pos.x,pos.y)||1;
           const vx=pos.x/length*config.velocity*heartScale;
           const vy=-pos.y/length*config.velocity*heartScale;
@@ -321,7 +332,7 @@
     if(reduced) {
       // A static filled set of little hearts for reduced-motion settings.
       for(let i=0;i<500;i++) {
-        const pos=pointOnHeart(Math.PI-2*Math.PI*Math.random());
+        const pos=sampleHeartPoint();
         emit(w/2+pos.x*heartScale,h/2-pos.y*heartScale+22,0,0);
         particles[(firstFree+config.length-1)%config.length].age=Math.random()*2.6;
       }
