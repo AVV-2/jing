@@ -262,11 +262,28 @@
       for (;;) {
         const point=pointOnHeart(Math.PI-2*Math.PI*Math.random());
         const ax=Math.abs(point.x);
+
+        // Upper angles measured from horizontal (0° side, 90° vertical).
+        const upperAngleDeg=point.y>=0
+          ? Math.atan2(point.y,Math.max(ax,1e-6))*180/Math.PI : -1;
+
+        // Lower angles measured from downward vertical (0° center, 15° offset).
+        const lowerFromVerticalDeg=point.y<0
+          ? Math.atan2(ax,Math.max(-point.y,1e-6))*180/Math.PI : -1;
+
         let weight;
-        if(point.y<0 && ax>=35 && ax<110) weight=2.0;    // lower diagonal sides
-        else if(point.y>=0 && ax>=35 && ax<110) weight=2.0; // upper diagonal shoulders
-        else if(ax>=110) weight=1.1;                    // widest horizontal sides
-        else weight=0.3;                               // further reduce vertical center strands
+        if(point.y<0 && ax>=8 && lowerFromVerticalDeg<=15) {
+          weight=1.15; // Lower center: within 15 degrees on either side
+        } else if(point.y<0 && ax>=35 && ax<110) {
+          weight=2.0;  // Lower diagonal sides
+        } else if(point.y>=0 && ax>=35 && ax<110
+                  && upperAngleDeg>=40 && upperAngleDeg<=45) {
+          weight=1.15; // Upper diagonals: 40-45 degrees
+        } else if(ax>=110) {
+          weight=1.1;  // Widest horizontal sides
+        } else {
+          weight=0.2;  // Upper/lower vertical regions
+        }
         if(Math.random()*2.0<=weight) return point;
       }
     }
